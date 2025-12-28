@@ -54,3 +54,6 @@ Thumbs.db
 
 # Generated visualizations
 *.html
+
+# Generated GGUF demo files
+*.gguf
