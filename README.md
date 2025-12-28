@@ -16,6 +16,7 @@ A beautiful rich 3D topology visualizer for Large Language Models (LLMs) with mo
 - **🤖 LLM Integration**: Plugin architecture for connecting to various LLM providers
 - **🔗 Agent & Orchestrator Ready**: Designed to integrate with AI agents and orchestration systems
 - **📈 Network Analysis**: Export to NetworkX for advanced graph analysis
+- **📦 GGUF Model Visualization**: Load and visualize **any** GGUF file's architecture in 3D
 - **🐍 Pure Python**: Built on numpy, plotly, and scipy
 
 ## 🚀 Quick Start
@@ -69,6 +70,27 @@ braintop visualize
 # Save to file
 braintop visualize -o my_topology.html
 ```
+
+### GGUF Model Visualization
+
+Visualize any GGUF model file in 3D:
+
+```bash
+# Visualize a GGUF model
+python examples/visualize_gguf.py path/to/model.gguf
+
+# With custom output file
+python examples/visualize_gguf.py model.gguf --output my_model.html
+
+# Verbose mode (show detailed architecture)
+python examples/visualize_gguf.py model.gguf --verbose
+
+# Create a demo GGUF file for testing
+python examples/create_demo_gguf.py
+python examples/visualize_gguf.py demo_model.gguf
+```
+
+See [GGUF Visualization Guide](docs/GGUF_VISUALIZATION.md) for detailed documentation.
 
 ## 📚 Documentation
 
