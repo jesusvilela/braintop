@@ -57,6 +57,10 @@ class RiemannianLayer(BaseLayer):
         
         # Compute 3D positions on manifold
         positions = self.compute_positions(parameters, **kwargs)
+        radii = np.array([np.linalg.norm(position) for position in positions])
+        radius_min = float(np.min(radii))
+        radius_max = float(np.max(radii))
+        radius_range = radius_max - radius_min if radius_max != radius_min else 1.0
         
         # Create nodes
         nodes = []
@@ -68,7 +72,9 @@ class RiemannianLayer(BaseLayer):
                 layer_id=self.layer_id,
                 metadata={
                     "manifold_type": self.config.get("manifold_type"),
-                    "curvature": self.config.get("curvature")
+                    "curvature": self.config.get("curvature"),
+                    "radial_distance": float(radii[i]),
+                    "normalized_radius": float((radii[i] - radius_min) / radius_range),
                 }
             )
             nodes.append(node)

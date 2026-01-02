@@ -94,3 +94,30 @@ class Topology:
             "total_edges": total_edges,
             "layer_types": [layer.layer_type for layer in self.layers],
         }
+
+    def compute_layer_statistics(self) -> Dict[str, Dict[str, Any]]:
+        """Compute statistics for each layer."""
+        node_layer_map = {
+            node.id: node.layer_id for layer in self.layers for node in layer.nodes
+        }
+        edge_counts: Dict[str, int] = {layer.id: 0 for layer in self.layers}
+        for edge in self.inter_layer_edges:
+            for node_id in (edge.source, edge.target):
+                layer_id = node_layer_map.get(node_id)
+                if layer_id:
+                    edge_counts[layer_id] += 1
+
+        stats: Dict[str, Dict[str, Any]] = {}
+        for layer in self.layers:
+            node_count = len(layer.nodes)
+            edge_count = edge_counts.get(layer.id, 0)
+            avg_degree = edge_count / node_count if node_count else 0.0
+            stats[layer.id] = {
+                "layer_name": layer.name,
+                "layer_type": layer.layer_type.value,
+                "node_count": node_count,
+                "edge_count": edge_count,
+                "avg_degree": round(avg_degree, 3),
+            }
+
+        return stats
