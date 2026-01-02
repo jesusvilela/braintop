@@ -57,6 +57,10 @@ class ConceptualLayer(BaseLayer):
         
         # Compute 3D positions
         positions = self.compute_positions(embeddings, **kwargs)
+        embedding_norms = np.linalg.norm(embeddings, axis=1)
+        norm_min = float(np.min(embedding_norms))
+        norm_max = float(np.max(embedding_norms))
+        norm_range = norm_max - norm_min if norm_max != norm_min else 1.0
         
         # Create nodes
         nodes = []
@@ -68,7 +72,9 @@ class ConceptualLayer(BaseLayer):
                 layer_id=self.layer_id,
                 metadata={
                     "concept": concepts[i] if i < len(concepts) else f"Concept_{i}",
-                    "embedding_dim": embeddings.shape[1] if embeddings is not None else 0
+                    "embedding_dim": embeddings.shape[1] if embeddings is not None else 0,
+                    "embedding_norm": float(embedding_norms[i]),
+                    "salience": float((embedding_norms[i] - norm_min) / norm_range),
                 }
             )
             nodes.append(node)
