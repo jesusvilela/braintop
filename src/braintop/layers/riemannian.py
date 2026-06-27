@@ -24,10 +24,12 @@ class RiemannianLayer(BaseLayer):
         """
         super().__init__(layer_id, name, LayerType.RIEMANNIAN)
         self.set_config(
+            manifold_type="sphere", radius=1.0, curvature=None  # sphere, torus, hyperbolic
             manifold_type="sphere",  # sphere, torus, hyperbolic
             radius=1.0,
             curvature=None,
             max_radius=4.0,
+            curvature=None
         )
 
     def generate_nodes(
@@ -169,8 +171,11 @@ class RiemannianLayer(BaseLayer):
                 raise ValueError("Hyperbolic max_radius must be positive and finite")
 
             u = np.random.random(num_nodes)
-            cdf_scale = np.cosh(curvature_scale * rho_max) - 1.0
-            rho = np.arccosh(1.0 + u * cdf_scale) / curvature_scale
+            rho = np.arccosh(1.0 + u * (np.cosh(curvature_scale * rho_max) - 1.0)) / curvature_scale
+            # Polar hyperbolic coordinates: radial distance rho >= 0 and angle.
+            # Exponential samples keep visualized points inside the disk while
+            # covering more than an infinitesimal neighborhood of the origin.
+            rho = np.random.exponential(scale=1.0, size=num_nodes)
             theta = 2 * np.pi * np.random.random(num_nodes)
             return np.column_stack([rho, theta])
 
@@ -218,6 +223,7 @@ class RiemannianLayer(BaseLayer):
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
+        
         u = params[:, 0]
         v = params[:, 1]
 
@@ -229,6 +235,7 @@ class RiemannianLayer(BaseLayer):
 
         return positions
 
+    
     def _sample_torus_minor_angles(self, num_nodes: int) -> np.ndarray:
         """Sample torus minor angles uniformly by surface area.
 
@@ -271,6 +278,11 @@ class RiemannianLayer(BaseLayer):
             List of 3D Cartesian coordinates (with z representing depth)
         """
         curvature = self._hyperbolic_curvature()
+        configured_curvature = self.config.get("curvature")
+        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
+        if curvature >= 0:
+            raise ValueError("Hyperbolic curvature must be negative")
+
         curvature_scale = 1.0 / np.sqrt(abs(curvature))
         rho = np.maximum(params[:, 0], 0.0)
         theta = params[:, 1]
@@ -286,6 +298,10 @@ class RiemannianLayer(BaseLayer):
 
         positions = [(float(xi), float(yi), float(zi)) for xi, yi, zi in zip(x, y, z)]
 
+        
+        positions = [(float(xi), float(yi), float(zi)) 
+                    for xi, yi, zi in zip(x, y, z)]
+        
         return positions
 
     def create_layer_with_nodes(
