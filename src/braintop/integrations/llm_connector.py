@@ -342,6 +342,110 @@ class LLMConnector(BaseIntegration):
             "model": self.model_name,
             "metadata": metadata,
         }
+        }
+        if inference is not None:
+            result["inference"] = inference
+
+        return result
+
+    def _get_callable(self, name: str) -> Optional[Callable[..., Any]]:
+        candidate = self.config.get(name)
+        if callable(candidate):
+            return candidate
+        if isinstance(self.client, dict) and callable(self.client.get(name)):
+            return self.client[name]
+        if self.client is not None and callable(getattr(self.client, name, None)):
+            return getattr(self.client, name)
+        return None
+
+    def _supports_callable(self, name: str) -> bool:
+        return self._get_callable(name) is not None
+
+    @staticmethod
+    def _validate_texts(texts: List[str]) -> List[str]:
+        if not texts:
+            raise ValueError("Text batch must contain at least one text")
+        if any(not isinstance(text, str) or not text.strip() for text in texts):
+            raise ValueError("Text batch cannot contain blank text entries")
+        return list(texts)
+
+    def _mock_embeddings(self, texts: List[str]) -> np.ndarray:
+        embedding_dim = int(self.config.get("embedding_dim", 768))
+        if embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive")
+
+        vectors = np.zeros((len(texts), embedding_dim), dtype=float)
+        for row, text in enumerate(texts):
+            features = self._text_features(text)
+            for feature in features:
+                digest = hashlib.sha256(feature.encode("utf-8")).digest()
+                index = int.from_bytes(digest[:8], "big") % embedding_dim
+                sign = 1.0 if digest[8] % 2 == 0 else -1.0
+                vectors[row, index] += sign
+        return vectors
+
+    @staticmethod
+    def _text_features(text: str) -> List[str]:
+        tokens = re.findall(r"[a-z0-9]+", text.lower())
+        features = list(tokens)
+        features.extend(" ".join(pair) for pair in zip(tokens, tokens[1:]))
+        if not features:
+            features = [text.strip().lower()]
+        return features
+
+    @staticmethod
+    def _coerce_embedding_matrix(raw_embeddings: Any, expected_rows: int) -> np.ndarray:
+        embeddings = np.asarray(raw_embeddings, dtype=float)
+        if embeddings.ndim != 2:
+            raise ValueError("Embedding provider must return a 2D array")
+        if embeddings.shape[0] != expected_rows:
+            raise ValueError("Embedding row count must match number of texts")
+        if embeddings.shape[1] == 0:
+            raise ValueError("Embedding dimension must be positive")
+        if not np.all(np.isfinite(embeddings)):
+            raise ValueError("Embeddings must contain only finite values")
+        return embeddings
+
+    @staticmethod
+    def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
+        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        if np.any(norms == 0):
+            raise ValueError("Cannot normalize zero-vector embeddings")
+        return matrix / norms
+
+    def _mock_inference(
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        return {
+            "text": f"Mock inference for '{prompt.strip()}' using {self.model_name}.",
+            "context": context or {},
+        }
+
+    def _normalize_inference_response(
+        self,
+        raw_response: Any,
+        context: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        if isinstance(raw_response, dict):
+            if "text" not in raw_response:
+                raise ValueError("Inference response dictionary must include a 'text' field")
+            text = str(raw_response["text"])
+            metadata = {"raw": dict(raw_response), "context": context or {}}
+        else:
+            text = str(raw_response)
+            metadata = {"raw": raw_response, "context": context or {}}
+
+        if not text.strip():
+            raise ValueError("Inference response text cannot be blank")
+
+        return {
+            "text": text,
+            "provider": self.provider,
+            "model": self.model_name,
+            "metadata": metadata,
+        }
 
     @staticmethod
     def _validate_attention_matrix(raw_attention: Any) -> np.ndarray:

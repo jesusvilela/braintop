@@ -25,6 +25,9 @@ class RiemannianLayer(BaseLayer):
         super().__init__(layer_id, name, LayerType.RIEMANNIAN)
         self.set_config(
             manifold_type="sphere", radius=1.0, curvature=None  # sphere, torus, hyperbolic
+            manifold_type="sphere",  # sphere, torus, hyperbolic
+            radius=1.0,
+            curvature=None
         )
 
     def generate_nodes(
@@ -207,6 +210,7 @@ class RiemannianLayer(BaseLayer):
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
+        
         u = params[:, 0]
         v = params[:, 1]
 
@@ -218,6 +222,7 @@ class RiemannianLayer(BaseLayer):
 
         return positions
 
+    
     def _sample_torus_minor_angles(self, num_nodes: int) -> np.ndarray:
         """Sample torus minor angles uniformly by surface area.
 
@@ -271,6 +276,10 @@ class RiemannianLayer(BaseLayer):
 
         positions = [(float(xi), float(yi), float(zi)) for xi, yi, zi in zip(x, y, z)]
 
+        
+        positions = [(float(xi), float(yi), float(zi)) 
+                    for xi, yi, zi in zip(x, y, z)]
+        
         return positions
 
     def create_layer_with_nodes(
