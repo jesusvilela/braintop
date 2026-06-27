@@ -123,6 +123,9 @@ class ConceptualLayer(BaseLayer):
         Returns:
             List of 3D positions
         """
+        if data.ndim != 2:
+            raise ValueError("PCA projection expects a 2D array")
+
         # Center the data. SVD on the centered design matrix is numerically
         # stable for PCA and handles n_samples == 1 without np.cov producing
         # a scalar/NaN covariance matrix.
