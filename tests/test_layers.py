@@ -45,6 +45,28 @@ def test_conceptual_layer_pca_projection():
     assert all(isinstance(pos, tuple) for pos in positions)
 
 
+def test_conceptual_layer_pca_handles_single_sample():
+    """Test PCA projection returns finite 3D coordinates for one sample."""
+    layer = ConceptualLayer("test_layer")
+    data = np.array([[1.0, 2.0]])
+
+    positions = layer.compute_positions(data, method="pca")
+
+    assert positions == [(0.0, 0.0, 0.0)]
+
+
+def test_conceptual_layer_pca_pads_low_dimensional_data():
+    """Test PCA projection pads missing components for low-dimensional inputs."""
+    layer = ConceptualLayer("test_layer")
+    data = np.array([[0.0, 1.0], [1.0, 0.0], [2.0, 1.0]])
+
+    positions = layer.compute_positions(data, method="pca")
+
+    assert len(positions) == 3
+    assert all(len(pos) == 3 for pos in positions)
+    assert all(np.isfinite(coordinate) for pos in positions for coordinate in pos)
+
+
 def test_conceptual_layer_with_embeddings():
     """Test creating layer with custom embeddings."""
     layer = ConceptualLayer("test_layer")
@@ -107,6 +129,24 @@ def test_riemannian_layer_hyperbolic():
     
     assert len(nodes) == 8
     assert all(len(node.position) == 3 for node in nodes)
+
+
+def test_riemannian_torus_rejects_invalid_radii():
+    """Test torus validation rejects self-intersecting radius configuration."""
+    layer = RiemannianLayer("torus_layer")
+    layer.set_config(manifold_type="torus", radius=1.0, minor_radius=1.0)
+
+    with pytest.raises(ValueError, match="minor_radius"):
+        layer.generate_nodes(num_nodes=1)
+
+
+def test_riemannian_hyperbolic_rejects_nonnegative_curvature():
+    """Test hyperbolic validation requires negative curvature."""
+    layer = RiemannianLayer("hyperbolic_layer")
+    layer.set_config(manifold_type="hyperbolic", curvature=0.0)
+
+    with pytest.raises(ValueError, match="negative"):
+        layer.generate_nodes(num_nodes=1)
 
 
 def test_riemannian_create_layer_with_nodes():
