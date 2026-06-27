@@ -169,8 +169,7 @@ class RiemannianLayer(BaseLayer):
                 raise ValueError("Hyperbolic max_radius must be positive and finite")
 
             u = np.random.random(num_nodes)
-            cdf_scale = np.cosh(curvature_scale * rho_max) - 1.0
-            rho = np.arccosh(1.0 + u * cdf_scale) / curvature_scale
+            rho = np.arccosh(1.0 + u * (np.cosh(curvature_scale * rho_max) - 1.0)) / curvature_scale
             theta = 2 * np.pi * np.random.random(num_nodes)
             return np.column_stack([rho, theta])
 
@@ -218,6 +217,7 @@ class RiemannianLayer(BaseLayer):
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
+        
         u = params[:, 0]
         v = params[:, 1]
 
@@ -229,6 +229,7 @@ class RiemannianLayer(BaseLayer):
 
         return positions
 
+    
     def _sample_torus_minor_angles(self, num_nodes: int) -> np.ndarray:
         """Sample torus minor angles uniformly by surface area.
 
@@ -271,6 +272,11 @@ class RiemannianLayer(BaseLayer):
             List of 3D Cartesian coordinates (with z representing depth)
         """
         curvature = self._hyperbolic_curvature()
+        configured_curvature = self.config.get("curvature")
+        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
+        if curvature >= 0:
+            raise ValueError("Hyperbolic curvature must be negative")
+
         curvature_scale = 1.0 / np.sqrt(abs(curvature))
         rho = np.maximum(params[:, 0], 0.0)
         theta = params[:, 1]
@@ -284,7 +290,13 @@ class RiemannianLayer(BaseLayer):
         y = disk_r * np.sin(theta)
         z = rho * curvature_scale
 
-        return [(float(xi), float(yi), float(zi)) for xi, yi, zi in zip(x, y, z)]
+        positions = [(float(xi), float(yi), float(zi)) for xi, yi, zi in zip(x, y, z)]
+
+        
+        positions = [(float(xi), float(yi), float(zi)) 
+                    for xi, yi, zi in zip(x, y, z)]
+        
+        return positions
 
     def create_layer_with_nodes(
         self,
