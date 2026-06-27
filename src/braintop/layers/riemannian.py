@@ -27,6 +27,8 @@ class RiemannianLayer(BaseLayer):
             manifold_type="sphere", radius=1.0, curvature=None  # sphere, torus, hyperbolic
             manifold_type="sphere",  # sphere, torus, hyperbolic
             radius=1.0,
+            curvature=None,
+            max_radius=4.0,
             curvature=None
         )
 
@@ -159,6 +161,17 @@ class RiemannianLayer(BaseLayer):
             return np.column_stack([u, v])
 
         elif manifold_type == "hyperbolic":
+            # Sample uniformly by hyperbolic area on a finite geodesic disk.
+            # For curvature K < 0, area density is proportional to
+            # sinh(sqrt(|K|) * rho), so the inverse CDF is analytic.
+            curvature = self._hyperbolic_curvature()
+            curvature_scale = np.sqrt(abs(curvature))
+            rho_max = float(self.config.get("max_radius", 4.0))
+            if rho_max <= 0 or not np.isfinite(rho_max):
+                raise ValueError("Hyperbolic max_radius must be positive and finite")
+
+            u = np.random.random(num_nodes)
+            rho = np.arccosh(1.0 + u * (np.cosh(curvature_scale * rho_max) - 1.0)) / curvature_scale
             # Polar hyperbolic coordinates: radial distance rho >= 0 and angle.
             # Exponential samples keep visualized points inside the disk while
             # covering more than an infinitesimal neighborhood of the origin.
@@ -247,6 +260,14 @@ class RiemannianLayer(BaseLayer):
 
         return np.array(samples[:num_nodes])
 
+    def _hyperbolic_curvature(self) -> float:
+        """Return validated negative curvature for hyperbolic geometry."""
+        configured_curvature = self.config.get("curvature")
+        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
+        if curvature >= 0 or not np.isfinite(curvature):
+            raise ValueError("Hyperbolic curvature must be negative and finite")
+        return curvature
+
     def _hyperbolic_embedding(self, params: np.ndarray) -> List[Tuple[float, float, float]]:
         """Embed points in hyperbolic space (Poincaré disk model).
 
@@ -256,6 +277,7 @@ class RiemannianLayer(BaseLayer):
         Returns:
             List of 3D Cartesian coordinates (with z representing depth)
         """
+        curvature = self._hyperbolic_curvature()
         configured_curvature = self.config.get("curvature")
         curvature = -1.0 if configured_curvature is None else float(configured_curvature)
         if curvature >= 0:

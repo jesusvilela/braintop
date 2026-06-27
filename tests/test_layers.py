@@ -203,3 +203,26 @@ def test_layers_generate_zero_nodes_without_reduction_errors():
 
     assert conceptual.generate_nodes(num_nodes=0) == []
     assert riemannian.generate_nodes(num_nodes=0) == []
+
+
+def test_riemannian_hyperbolic_parameters_are_area_uniform_by_cdf():
+    """Review regression: hyperbolic rho sampling follows area-uniform CDF."""
+    layer = RiemannianLayer("hyperbolic_layer")
+    layer.set_config(manifold_type="hyperbolic", curvature=-1.0, max_radius=4.0)
+
+    np.random.seed(7)
+    parameters = layer._generate_uniform_parameters(5000)
+    rho = parameters[:, 0]
+    transformed = (np.cosh(rho) - 1.0) / (np.cosh(4.0) - 1.0)
+
+    assert abs(float(np.mean(transformed)) - 0.5) < 0.02
+    assert np.mean(rho > 3.0) > np.mean(rho < 1.0)
+
+
+def test_riemannian_hyperbolic_rejects_invalid_max_radius():
+    """Review regression: finite geodesic disk radius is required for sampling."""
+    layer = RiemannianLayer("hyperbolic_layer")
+    layer.set_config(manifold_type="hyperbolic", curvature=-1.0, max_radius=np.inf)
+
+    with pytest.raises(ValueError, match="max_radius"):
+        layer.generate_nodes(num_nodes=1)

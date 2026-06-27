@@ -232,6 +232,7 @@ class LLMConnector(BaseIntegration):
                 "top_k": self.config.get("top_k"),
             },
         }
+        }
         if inference is not None:
             result["inference"] = inference
 
@@ -382,6 +383,13 @@ class LLMConnector(BaseIntegration):
                 index = int.from_bytes(digest[:8], "big") % embedding_dim
                 sign = 1.0 if digest[8] % 2 == 0 else -1.0
                 vectors[row, index] += sign
+
+            # Extremely small embedding dimensions can make signed feature hashes
+            # cancel exactly. Add a deterministic fallback coordinate so mock
+            # embeddings remain normalizable for every valid text/configuration.
+            if not np.any(vectors[row]):
+                digest = hashlib.sha256(text.strip().encode("utf-8")).digest()
+                vectors[row, int.from_bytes(digest[:8], "big") % embedding_dim] = 1.0
         return vectors
 
     @staticmethod
