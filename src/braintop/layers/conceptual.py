@@ -121,27 +121,30 @@ class ConceptualLayer(BaseLayer):
         Returns:
             List of 3D positions
         """
-        # Center the data
-        data_centered = data - np.mean(data, axis=0)
-        
-        # Compute covariance matrix
-        cov_matrix = np.cov(data_centered.T)
-        
-        # Compute eigenvalues and eigenvectors
-        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
-        
-        # Sort by eigenvalues in descending order
-        idx = eigenvalues.argsort()[::-1]
-        eigenvectors = eigenvectors[:, idx]
-        
-        # Project onto top 3 principal components
-        projection_matrix = eigenvectors[:, :3]
-        projected = data_centered @ projection_matrix
-        
-        # Convert to list of tuples
-        positions = [(float(x), float(y), float(z)) 
-                    for x, y, z in projected]
-        
+        if data.ndim != 2:
+            raise ValueError("PCA projection expects a 2D array")
+
+        # Center the data. SVD on the centered design matrix is numerically
+        # stable for PCA and handles n_samples == 1 without np.cov producing
+        # a scalar/NaN covariance matrix.
+        data_centered = data - np.mean(data, axis=0, keepdims=True)
+
+        # Vt rows are principal axes ordered by decreasing singular value.
+        _, _, vt = np.linalg.svd(data_centered, full_matrices=False)
+        n_components = min(3, vt.shape[0])
+        projected = data_centered @ vt[:n_components].T
+
+        # Always return exactly three coordinates. If the rank/feature count is
+        # lower than three, missing principal components have zero variance.
+        if n_components < 3:
+            projected = np.pad(
+                projected,
+                ((0, 0), (0, 3 - n_components)),
+                mode="constant",
+            )
+
+        positions = [(float(x), float(y), float(z)) for x, y, z in projected]
+
         return positions
     
     def _random_projection(self, data: np.ndarray) -> List[Tuple[float, float, float]]:
