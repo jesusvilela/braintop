@@ -26,7 +26,7 @@ class RiemannianLayer(BaseLayer):
         self.set_config(
             manifold_type="sphere",  # sphere, torus, hyperbolic
             radius=1.0,
-            curvature=1.0
+            curvature=None
         )
     
     def generate_nodes(
@@ -126,12 +126,21 @@ class RiemannianLayer(BaseLayer):
             return np.column_stack([theta, phi])
         
         elif manifold_type == "torus":
-            # Generate uniform points on torus
-            # u, v: [0, 2*pi]
+            # Generate points uniformly with respect to torus surface area.
+            # The area element is proportional to R + r*cos(v), so v cannot be
+            # sampled uniformly without biasing points toward the inner rim.
             u = 2 * np.pi * np.random.random(num_nodes)
-            v = 2 * np.pi * np.random.random(num_nodes)
+            v = self._sample_torus_minor_angles(num_nodes)
             return np.column_stack([u, v])
-        
+
+        elif manifold_type == "hyperbolic":
+            # Polar hyperbolic coordinates: radial distance rho >= 0 and angle.
+            # Exponential samples keep visualized points inside the disk while
+            # covering more than an infinitesimal neighborhood of the origin.
+            rho = np.random.exponential(scale=1.0, size=num_nodes)
+            theta = 2 * np.pi * np.random.random(num_nodes)
+            return np.column_stack([rho, theta])
+
         else:
             # Default to 2D parameters
             return np.random.random((num_nodes, 2))
@@ -168,8 +177,12 @@ class RiemannianLayer(BaseLayer):
         Returns:
             List of 3D Cartesian coordinates
         """
-        R = self.config.get("radius", 1.0)  # Major radius
-        r = R * 0.4  # Minor radius
+        R = float(self.config.get("radius", 1.0))  # Major radius
+        r = float(self.config.get("minor_radius", R * 0.4))
+        if R <= 0 or r <= 0:
+            raise ValueError("Torus radii must be positive")
+        if r >= R:
+            raise ValueError("Torus minor_radius must be smaller than radius")
         
         u = params[:, 0]
         v = params[:, 1]
@@ -183,6 +196,30 @@ class RiemannianLayer(BaseLayer):
         
         return positions
     
+    def _sample_torus_minor_angles(self, num_nodes: int) -> np.ndarray:
+        """Sample torus minor angles uniformly by surface area.
+
+        Returns angles v with density proportional to R + r*cos(v), using
+        rejection sampling from a uniform proposal on [0, 2*pi].
+        """
+        R = float(self.config.get("radius", 1.0))
+        r = float(self.config.get("minor_radius", R * 0.4))
+        if R <= 0 or r <= 0:
+            raise ValueError("Torus radii must be positive")
+        if r >= R:
+            raise ValueError("Torus minor_radius must be smaller than radius")
+
+        samples = []
+        max_density = R + r
+        while len(samples) < num_nodes:
+            batch_size = max(num_nodes - len(samples), 16) * 2
+            candidates = 2 * np.pi * np.random.random(batch_size)
+            accept_prob = (R + r * np.cos(candidates)) / max_density
+            accepted = candidates[np.random.random(batch_size) <= accept_prob]
+            samples.extend(accepted.tolist())
+
+        return np.array(samples[:num_nodes])
+
     def _hyperbolic_embedding(self, params: np.ndarray) -> List[Tuple[float, float, float]]:
         """Embed points in hyperbolic space (Poincaré disk model).
         
@@ -192,13 +229,23 @@ class RiemannianLayer(BaseLayer):
         Returns:
             List of 3D Cartesian coordinates (with z representing depth)
         """
-        # Map to Poincaré disk
-        r = np.tanh(params[:, 0] * 0.5)
-        theta = params[:, 1] * 2 * np.pi
-        
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        z = -np.log(1 - r**2) * 0.5  # Depth encoding
+        configured_curvature = self.config.get("curvature")
+        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
+        if curvature >= 0:
+            raise ValueError("Hyperbolic curvature must be negative")
+
+        curvature_scale = 1.0 / np.sqrt(abs(curvature))
+        rho = np.maximum(params[:, 0], 0.0)
+        theta = params[:, 1]
+
+        # Poincare disk radial coordinate for geodesic radius rho on curvature K:
+        # disk_r = tanh(rho / (2 / sqrt(|K|))). The visible z coordinate is not an
+        # isometric embedding; it encodes hyperbolic depth/geodesic radius.
+        disk_r = np.tanh(rho / (2.0 * curvature_scale))
+
+        x = disk_r * np.cos(theta)
+        y = disk_r * np.sin(theta)
+        z = rho * curvature_scale
         
         positions = [(float(xi), float(yi), float(zi)) 
                     for xi, yi, zi in zip(x, y, z)]
