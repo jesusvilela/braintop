@@ -215,3 +215,29 @@ def test_connector_rejects_invalid_text_batches():
 
     with pytest.raises(ValueError, match="blank"):
         connector.get_embeddings(["valid", "  "])
+
+
+def test_mock_embeddings_remain_normalizable_for_tiny_dimensions():
+    """Review regression: hash cancellations must not create zero mock vectors."""
+    connector = LLMConnector(provider="mock", config={"embedding_dim": 1})
+    connector.connect()
+
+    embeddings = connector.get_embeddings(["a a"])
+
+    assert embeddings.shape == (1, 1)
+    assert np.allclose(np.linalg.norm(embeddings, axis=1), 1.0)
+
+
+def test_topology_extraction_rejects_nonfinite_threshold():
+    """Review regression: non-finite thresholds are not mathematically meaningful."""
+    connector = LLMConnector(
+        provider="custom",
+        config={
+            "embedding_fn": lambda texts: np.eye(len(texts)),
+            "similarity_threshold": np.inf,
+        },
+    )
+    connector.connect()
+
+    with pytest.raises(ValueError, match="similarity_threshold"):
+        connector.extract_topology_data(["a", "b"])
