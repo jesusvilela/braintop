@@ -13,7 +13,7 @@ A beautiful rich 3D topology visualizer for Large Language Models (LLMs) with mo
   - **Conceptual Layers**: Semantic/concept-based topology with PCA projection
   - **Riemannian Layers**: Curved manifolds (sphere, torus, hyperbolic space)
   - **Custom Layers**: Extensible base class for custom geometries
-- **🤖 LLM Integration**: Production bridge with deterministic mock mode, custom callables, packaged adapters (OpenAI-compatible, sentence-transformers, llama.cpp/GGUF), client-backed providers, validated embeddings, inference responses, and attention matrices
+- **🤖 LLM Integration**: Production bridge with deterministic mock mode, custom callables, client-backed providers, validated embeddings, inference responses, and attention matrices
 - **🔗 Agent & Orchestrator Ready**: Designed to integrate with AI agents and orchestration systems
 - **📈 Network Analysis**: Export to NetworkX for advanced graph analysis
 - **🐍 Pure Python**: Built on numpy, plotly, and scipy
@@ -162,7 +162,7 @@ graph = visualizer.get_network_graph()
 
 ### LLM Integration
 
-Connect to LLMs or embedding systems to extract embeddings, attention-like matrices, inference text, and topology-ready relationships. `mock` is deterministic for offline demos/tests; `custom` accepts callables; packaged adapters support OpenAI-compatible clients, sentence-transformers, and llama.cpp/GGUF clients while keeping optional SDK imports lazy.
+Connect to LLMs or embedding systems to extract embeddings, attention-like matrices, inference text, and topology-ready relationships. `mock` is deterministic for offline demos/tests; `custom` accepts callables; named providers can be passed as prebuilt clients without importing vendor SDKs inside Braintop.
 
 ```python
 import numpy as np
@@ -189,14 +189,6 @@ custom_llm = LLMConnector(
     },
 )
 custom_llm.connect()
-
-# Packaged adapters can also wrap prebuilt provider clients:
-openai_client = ...  # construct with the OpenAI SDK or an OpenAI-compatible client
-openai_llm = LLMConnector(
-    provider="openai",
-    model_name="text-embedding-3-small",
-    config={"client": openai_client},
-)
 
 texts = [
     "Neural networks learn patterns",

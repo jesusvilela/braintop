@@ -51,20 +51,21 @@ class LLMConnector(BaseIntegration):
         Returns:
             True if connection successful
         """
-        self.client = self._create_adapter()
-        if self.client is not None and hasattr(self.client, "connect"):
-            self.client.connect()
+        self.client = self.config.get("client")
+        if self.provider == "custom" and self.client is None:
+            self.client = {
+                "embedding_fn": self.config.get("embedding_fn"),
+                "inference_fn": self.config.get("inference_fn"),
+                "attention_fn": self.config.get("attention_fn"),
+            }
 
-        # Vendor SDK construction is intentionally delegated to packaged
-        # adapters/callers so the core connector remains import-safe in offline
-        # contexts.
+        # Vendor SDK construction is intentionally delegated to callers so the
+        # core package remains lightweight and import-safe in offline contexts.
         self.is_connected = True
         return True
 
     def disconnect(self) -> None:
         """Close connection to the provider."""
-        if self.client is not None and hasattr(self.client, "disconnect"):
-            self.client.disconnect()
         self.client = None
         self.is_connected = False
 
@@ -137,12 +138,9 @@ class LLMConnector(BaseIntegration):
             "is_connected": self.is_connected,
             "embedding_dim": self.config.get("embedding_dim", 768),
             "supports_inference": self._supports_callable("inference_fn")
-            or self._adapter_capability("supports_inference")
             or self.provider == "mock",
             "supports_attention": self._supports_callable("attention_fn")
-            or self._adapter_capability("supports_attention")
             or self.provider == "mock",
-            "adapter": self._adapter_name(),
         }
 
     def get_attention_weights(
@@ -244,57 +242,6 @@ class LLMConnector(BaseIntegration):
             result["inference"] = inference
 
         return result
-
-    def _create_adapter(self) -> Optional[Any]:
-        """Create a packaged adapter or return a caller-supplied client."""
-        supplied_client = self.config.get("client")
-
-        if self.provider == "custom":
-            if supplied_client is not None:
-                return supplied_client
-            return CallableAdapter(
-                embedding_fn=self.config.get("embedding_fn"),
-                inference_fn=self.config.get("inference_fn"),
-                attention_fn=self.config.get("attention_fn"),
-                model_name=self.model_name,
-                config=self.config,
-            )
-
-        if self.provider in {"sentence-transformers", "sentence_transformers", "huggingface"}:
-            return SentenceTransformerAdapter(
-                model_name=self.model_name,
-                client=supplied_client,
-                config=self.config,
-            )
-
-        if self.provider in {"openai", "openai-compatible"}:
-            return OpenAIAdapter(
-                model_name=self.model_name,
-                client=supplied_client,
-                config=self.config,
-            )
-
-        if self.provider in {"llama-cpp", "llama_cpp", "gguf"}:
-            return LlamaCppAdapter(
-                model_name=self.model_name,
-                client=supplied_client,
-                config=self.config,
-            )
-
-        return supplied_client
-
-    def _adapter_name(self) -> Optional[str]:
-        if self.client is not None and hasattr(self.client, "get_model_info"):
-            info = self.client.get_model_info()
-            return info.get("adapter")
-        if isinstance(self.client, dict):
-            return "callable-dict"
-        return self.provider if self.client is not None else None
-
-    def _adapter_capability(self, capability: str) -> bool:
-        if self.client is not None and hasattr(self.client, "get_model_info"):
-            return bool(self.client.get_model_info().get(capability, False))
-        return False
 
     def _get_callable(self, name: str) -> Optional[Callable[..., Any]]:
         candidate = self.config.get(name)

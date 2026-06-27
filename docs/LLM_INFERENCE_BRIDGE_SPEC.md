@@ -13,11 +13,7 @@ The LLM inference bridge makes `braintop` useful with either real model clients 
   - `embedding_fn(texts) -> array-like[n_texts, embedding_dim]`
   - `inference_fn(prompt, context=None) -> str | dict`
   - `attention_fn(text, layer=None) -> array-like[n_tokens, n_tokens]`
-- Packaged adapters:
-  - `sentence-transformers` / `sentence_transformers` / `huggingface` use `SentenceTransformerAdapter`.
-  - `openai` / `openai-compatible` use `OpenAIAdapter`.
-  - `llama-cpp` / `llama_cpp` / `gguf` use `LlamaCppAdapter`.
-- Named external providers can be connected when a pre-built `client` is supplied in `config`; adapters import optional SDKs lazily only when they must construct their own clients.
+- Named external providers can be connected when a pre-built `client` is supplied in `config`; the connector does not import vendor SDKs directly.
 
 ## Reliability Requirements
 
@@ -56,7 +52,6 @@ The LLM inference bridge makes `braintop` useful with either real model clients 
 
 - Deterministic mock embeddings: same inputs and config produce identical vectors.
 - Custom embedding bridge: supplied embedding callable is used, normalized, and validated.
-- Packaged adapter bridge: dependency-injected SentenceTransformer, OpenAI-compatible, and llama.cpp-style clients are parsed and normalized.
 - Inference bridge: mock and custom inference responses are normalized into the production schema.
 - Relationship extraction: `top_k` and threshold produce deterministic, self-loop-free edges.
 - Attention bridge: custom or mock attention matrices are validated and row-normalized.
