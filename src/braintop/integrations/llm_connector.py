@@ -6,6 +6,12 @@ import re
 
 import numpy as np
 
+from braintop.integrations.adapters import (
+    CallableAdapter,
+    LlamaCppAdapter,
+    OpenAIAdapter,
+    SentenceTransformerAdapter,
+)
 from braintop.integrations.base import BaseIntegration
 
 
