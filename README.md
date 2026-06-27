@@ -13,7 +13,7 @@ A beautiful rich 3D topology visualizer for Large Language Models (LLMs) with mo
   - **Conceptual Layers**: Semantic/concept-based topology with PCA projection
   - **Riemannian Layers**: Curved manifolds (sphere, torus, hyperbolic space)
   - **Custom Layers**: Extensible base class for custom geometries
-- **🤖 LLM Integration**: Plugin architecture for connecting to various LLM providers
+- **🤖 LLM Integration**: Production bridge with deterministic mock mode, custom callables, packaged adapters (OpenAI-compatible, sentence-transformers, llama.cpp/GGUF), client-backed providers, validated embeddings, inference responses, and attention matrices
 - **🔗 Agent & Orchestrator Ready**: Designed to integrate with AI agents and orchestration systems
 - **📈 Network Analysis**: Export to NetworkX for advanced graph analysis
 - **🐍 Pure Python**: Built on numpy, plotly, and scipy
@@ -105,7 +105,7 @@ layer_model = layer.create_layer_with_nodes(
 )
 ```
 
-**Riemannian Layer**: Represents data on curved manifolds.
+**Riemannian Layer**: Represents data on curved manifolds. Hyperbolic parameters use geodesic radius `rho >= 0` and angle `theta` in radians; generated hyperbolic samples are area-uniform on a finite geodesic disk controlled by `max_radius`.
 
 ```python
 from braintop.layers.riemannian import RiemannianLayer
@@ -116,11 +116,11 @@ sphere_layer.set_config(manifold_type="sphere", radius=2.0)
 
 # Torus
 torus_layer = RiemannianLayer("torus")
-torus_layer.set_config(manifold_type="torus", radius=1.5)
+torus_layer.set_config(manifold_type="torus", radius=1.5, minor_radius=0.5)
 
-# Hyperbolic (Poincaré disk)
+# Hyperbolic (Poincaré disk): parameters are [rho, theta]
 hyperbolic_layer = RiemannianLayer("hyperbolic")
-hyperbolic_layer.set_config(manifold_type="hyperbolic", curvature=-1.0)
+hyperbolic_layer.set_config(manifold_type="hyperbolic", curvature=-1.0, max_radius=4.0)
 
 layer_model = sphere_layer.create_layer_with_nodes(num_nodes=15)
 ```
@@ -162,31 +162,56 @@ graph = visualizer.get_network_graph()
 
 ### LLM Integration
 
-Connect to LLMs to extract embeddings and relationships:
+Connect to LLMs or embedding systems to extract embeddings, attention-like matrices, inference text, and topology-ready relationships. `mock` is deterministic for offline demos/tests; `custom` accepts callables; packaged adapters support OpenAI-compatible clients, sentence-transformers, and llama.cpp/GGUF clients while keeping optional SDK imports lazy.
 
 ```python
+import numpy as np
+
 from braintop.integrations.llm_connector import LLMConnector
 from braintop.utils.builders import TopologyBuilder
 
-# Connect to LLM
-llm = LLMConnector(provider="mock", model_name="gpt-4")
+# Deterministic offline/demo bridge
+llm = LLMConnector(provider="mock", model_name="demo-embedder")
 llm.connect()
 
-# Create topology from texts
+# Or bridge your own embedding/inference functions
+def embedding_fn(texts):
+    # Replace with sentence-transformers, llama.cpp, an API client, etc.
+    return np.random.default_rng(0).normal(size=(len(texts), 384))
+
+custom_llm = LLMConnector(
+    provider="custom",
+    model_name="external-embedder",
+    config={
+        "embedding_fn": embedding_fn,
+        "similarity_threshold": 0.7,
+        "top_k": 3,
+    },
+)
+custom_llm.connect()
+
+# Packaged adapters can also wrap prebuilt provider clients:
+openai_client = ...  # construct with the OpenAI SDK or an OpenAI-compatible client
+openai_llm = LLMConnector(
+    provider="openai",
+    model_name="text-embedding-3-small",
+    config={"client": openai_client},
+)
+
 texts = [
     "Neural networks learn patterns",
     "Transformers use attention",
-    "Embeddings represent meaning"
+    "Embeddings represent meaning",
 ]
 
 builder = TopologyBuilder("llm_topology", "LLM Topology")
-builder.add_layer_from_llm("concepts", llm, texts)
+builder.add_layer_from_llm("concepts", custom_llm, texts)
 topology = builder.build()
 ```
 
 ## 🎯 Use Cases
 
-- **LLM Analysis**: Visualize attention patterns, embedding spaces, and layer relationships
+- **LLM Analysis**: Visualize attention patterns, embedding spaces, inference metadata, and layer relationships
 - **Concept Mapping**: Create 3D maps of semantic relationships
 - **Neural Architecture Visualization**: Display multi-layer neural network topologies
 - **Knowledge Graphs**: Visualize hierarchical and networked knowledge structures
