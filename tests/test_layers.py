@@ -226,3 +226,20 @@ def test_riemannian_hyperbolic_rejects_invalid_max_radius():
 
     with pytest.raises(ValueError, match="max_radius"):
         layer.generate_nodes(num_nodes=1)
+
+
+def test_conceptual_layer_rejects_unknown_projection_method():
+    """A misspelled projection must not silently become a random projection."""
+    layer = ConceptualLayer("test_layer")
+
+    with pytest.raises(ValueError, match="Unsupported projection method"):
+        layer.compute_positions(np.ones((3, 4)), method="pca-ish")
+
+
+def test_riemannian_layer_rejects_unknown_manifold_type():
+    """A misspelled manifold must not silently render as a sphere."""
+    layer = RiemannianLayer("test_layer")
+    layer.set_config(manifold_type="hyperbollic")
+
+    with pytest.raises(ValueError, match="Unsupported manifold type"):
+        layer.generate_nodes(num_nodes=3)
