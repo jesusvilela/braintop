@@ -1,6 +1,6 @@
 """LLM connector for integrating with language models."""
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 import hashlib
 import re
 
@@ -282,11 +282,11 @@ class LLMConnector(BaseIntegration):
     def _get_callable(self, name: str) -> Optional[Callable[..., Any]]:
         candidate = self.config.get(name)
         if callable(candidate):
-            return candidate
+            return cast(Callable[..., Any], candidate)
         if isinstance(self.client, dict) and callable(self.client.get(name)):
-            return self.client[name]
+            return cast(Callable[..., Any], self.client[name])
         if self.client is not None and callable(getattr(self.client, name, None)):
-            return getattr(self.client, name)
+            return cast(Callable[..., Any], getattr(self.client, name))
         return None
 
     def _supports_callable(self, name: str) -> bool:
@@ -349,7 +349,7 @@ class LLMConnector(BaseIntegration):
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
         if np.any(norms == 0):
             raise ValueError("Cannot normalize zero-vector embeddings")
-        return matrix / norms
+        return np.asarray(matrix / norms)
 
     def _mock_inference(
         self,
@@ -398,7 +398,7 @@ class LLMConnector(BaseIntegration):
         row_sums = attention.sum(axis=1, keepdims=True)
         if np.any(row_sums == 0):
             raise ValueError("Attention rows must have positive mass")
-        return attention / row_sums
+        return np.asarray(attention / row_sums)
 
     def _mock_attention(self, text: str) -> np.ndarray:
         tokens = text.split()

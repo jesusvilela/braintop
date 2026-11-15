@@ -5,7 +5,7 @@ accepts a prebuilt client for tests/production dependency injection, or imports
 its SDK lazily from ``connect()`` when a client is not supplied.
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import numpy as np
 
@@ -66,7 +66,7 @@ class SentenceTransformerAdapter:
     def __init__(
         self,
         model_name: str,
-        client: Optional[Any] = None,
+        client: Any = None,
         config: Optional[Dict[str, Any]] = None,
     ):
         self.model_name = model_name
@@ -113,7 +113,7 @@ class OpenAIAdapter:
     def __init__(
         self,
         model_name: str,
-        client: Optional[Any] = None,
+        client: Any = None,
         config: Optional[Dict[str, Any]] = None,
     ):
         self.model_name = model_name
@@ -158,7 +158,7 @@ class OpenAIAdapter:
             messages=messages,
             **completion_kwargs,
         )
-        return response.choices[0].message.content
+        return cast(str, response.choices[0].message.content)
 
     def get_model_info(self) -> Dict[str, Any]:
         return {
@@ -178,7 +178,7 @@ class LlamaCppAdapter:
     def __init__(
         self,
         model_name: str,
-        client: Optional[Any] = None,
+        client: Any = None,
         config: Optional[Dict[str, Any]] = None,
     ):
         self.model_name = model_name
@@ -219,11 +219,11 @@ class LlamaCppAdapter:
             messages.append({"role": "user", "content": prompt})
             response = self.client.create_chat_completion(messages=messages, **inference_kwargs)
             choice = response["choices"][0]
-            return choice.get("message", {}).get("content", choice.get("text", ""))
+            return cast(str, choice.get("message", {}).get("content", choice.get("text", "")))
 
         response = self.client(prompt, **inference_kwargs)
         if isinstance(response, dict):
-            return response.get("choices", [{}])[0].get("text", "")
+            return cast(str, response.get("choices", [{}])[0].get("text", ""))
         return str(response)
 
     def get_model_info(self) -> Dict[str, Any]:

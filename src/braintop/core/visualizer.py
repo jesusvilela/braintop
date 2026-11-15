@@ -188,10 +188,10 @@ class TopologyVisualizer:
                     y=y_coords,
                     z=z_coords,
                     mode='lines',
-                    line=dict(color='rgba(120,120,120,0.6)', width=1 + weight * 2),
+                    line=dict(color='rgb(90,90,90)', width=1 + weight * 2),
                     hoverinfo='skip',
                     showlegend=False,
-                    opacity=0.5
+                    opacity=0.6
                 ))
 
     def _compute_node_metrics(

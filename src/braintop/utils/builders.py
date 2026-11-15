@@ -254,7 +254,7 @@ class TopologyBuilder:
         pos2: tuple
     ) -> float:
         """Compute Euclidean distance between two positions."""
-        return np.sqrt(sum((a - b) ** 2 for a, b in zip(pos1, pos2)))
+        return float(np.sqrt(sum((a - b) ** 2 for a, b in zip(pos1, pos2))))
     
     def set_metadata(self, **kwargs: Any) -> "TopologyBuilder":
         """Set metadata for the topology.

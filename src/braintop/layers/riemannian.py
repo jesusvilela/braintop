@@ -243,7 +243,7 @@ class RiemannianLayer(BaseLayer):
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
-        samples = []
+        samples: List[float] = []
         max_density = R + r
         while len(samples) < num_nodes:
             batch_size = max(num_nodes - len(samples), 16) * 2
