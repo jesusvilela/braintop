@@ -62,15 +62,43 @@ class Topology:
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def add_layer(self, layer: LayerModel) -> None:
-        """Add a layer to the topology."""
+        """Add a layer, rejecting ambiguous layer and node identifiers."""
+        if self.get_layer(layer.id) is not None:
+            raise ValueError(f"Duplicate layer ID: {layer.id}")
+        existing = {node.id for node in self.get_all_nodes()}
+        incoming = [node.id for node in layer.nodes]
+        if len(incoming) != len(set(incoming)) or existing.intersection(incoming):
+            raise ValueError("Node IDs must be unique across the whole topology")
+        if any(node.layer_id != layer.id for node in layer.nodes):
+            raise ValueError("Each node's layer_id must match its containing layer")
         self.layers.append(layer)
-    
+
+    def _edge_endpoint_layers(self, edge: EdgeModel) -> Tuple[str, str]:
+        node_to_layer = {
+            node.id: node.layer_id for node in self.get_all_nodes()
+        }
+        if edge.source not in node_to_layer or edge.target not in node_to_layer:
+            raise ValueError(
+                f"Edge endpoints must refer to existing nodes: {edge.source}, {edge.target}"
+            )
+        if any(
+            existing_edge.id == edge.id for existing_edge in self.get_all_edges()
+        ):
+            raise ValueError(f"Duplicate edge ID: {edge.id}")
+        return node_to_layer[edge.source], node_to_layer[edge.target]
+
     def add_inter_layer_edge(self, edge: EdgeModel) -> None:
-        """Add a cross-layer relation (legacy callers may add same-layer edges)."""
+        """Add an edge joining nodes in *different* layers."""
+        source_layer, target_layer = self._edge_endpoint_layers(edge)
+        if source_layer == target_layer:
+            raise ValueError("Inter-layer edge must connect distinct layers")
         self.inter_layer_edges.append(edge)
 
     def add_intra_layer_edge(self, edge: EdgeModel) -> None:
-        """Add a relation whose endpoints belong to the same layer."""
+        """Add an edge joining nodes in the *same* layer."""
+        source_layer, target_layer = self._edge_endpoint_layers(edge)
+        if source_layer != target_layer:
+            raise ValueError("Intra-layer edge endpoints must share a layer")
         self.intra_layer_edges.append(edge)
 
     def world_position(self, node: NodeModel) -> Vector3:
