@@ -1,5 +1,10 @@
 # Braintop - Project Summary
 
+> **Historical snapshot (June 2026).** This document records an earlier implementation
+> state. Its test counts, coverage, security statements and completion claims are not a
+> current release certification. Use the live CI status and README for current project
+> capabilities.
+
 ## Overview
 Braintop is a production-ready 3D topology visualizer for Large Language Models with modular architecture supporting multiple geometric layer types.
 
