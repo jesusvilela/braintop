@@ -1,6 +1,6 @@
 """Builder utilities for creating topologies."""
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Any
 import numpy as np
 
 from braintop.core.topology import Topology, LayerModel, EdgeModel

@@ -43,6 +43,7 @@ setup(
             "black>=22.0.0",
             "flake8>=4.0.0",
             "mypy>=0.950",
+            "gguf>=0.10.0",
         ],
     },
     entry_points={

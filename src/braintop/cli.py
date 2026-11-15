@@ -83,7 +83,7 @@ def visualize_command(args: argparse.Namespace) -> int:
     # Create visualizer
     print("\nCreating visualization...")
     visualizer = TopologyVisualizer(topology)
-    fig = visualizer.create_figure(
+    visualizer.create_figure(
         color_by=args.color_by,
         size_by=args.size_by,
     )
@@ -123,6 +123,40 @@ def visualize_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def gguf_command(args: argparse.Namespace) -> int:
+    """Handle the gguf command: visualize the tensor layout of a GGUF file."""
+    from braintop.integrations.gguf_loader import GGUFFormatError, GGUFLoader
+
+    loader = GGUFLoader()
+    try:
+        loader.load_file(args.path)
+    except (FileNotFoundError, GGUFFormatError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(loader.format_summary())
+    if args.summary:
+        return 0
+
+    topology = loader.build_topology(max_blocks=args.max_blocks)
+    stats = topology.compute_statistics()
+    print(
+        f"Topology: {stats['num_layers']} stages, {stats['total_nodes']} nodes, "
+        f"{stats['total_edges']} edges "
+        f"({topology.metadata['blocks_shown']} of "
+        f"{topology.metadata['blocks_in_file']} blocks shown)"
+    )
+
+    visualizer = TopologyVisualizer(topology)
+    visualizer.create_figure(color_by="layer", size_by="param_share")
+    if args.output:
+        visualizer.save(args.output, format=args.format)
+        print(f"Saved visualization to {args.output}")
+    else:
+        visualizer.show()
+    return 0
+
+
 def info_command(args: argparse.Namespace) -> int:
     """Handle the info command."""
     print(f"Braintop v{__version__}")
@@ -133,6 +167,7 @@ def info_command(args: argparse.Namespace) -> int:
     print("  - Conceptual layers for semantic relationships")
     print("  - Riemannian layers for curved geometry (sphere, torus, hyperbolic)")
     print("  - LLM integration for extracting embeddings and relationships")
+    print("  - GGUF model files: tensor layout by block (braintop gguf MODEL.gguf)")
     print("  - Interactive 3D visualization with Plotly")
     print("  - Plugin system for custom layers and integrations")
     print()
@@ -209,8 +244,36 @@ def main(argv: Optional[list] = None) -> int:
         help="Generate ablation studies (layer removal/isolations)"
     )
     
+    # GGUF command
+    gguf_parser = subparsers.add_parser(
+        "gguf",
+        help="Visualize the tensor layout of a GGUF model file"
+    )
+    gguf_parser.add_argument("path", help="Path to the GGUF file")
+    gguf_parser.add_argument(
+        "-o", "--output",
+        help="Output file path (default: show in browser)"
+    )
+    gguf_parser.add_argument(
+        "-f", "--format",
+        choices=["html", "png", "jpg", "svg"],
+        default="html",
+        help="Output format (default: html)"
+    )
+    gguf_parser.add_argument(
+        "--max-blocks",
+        type=int,
+        default=None,
+        help="Draw at most this many evenly spaced blocks (default: all)"
+    )
+    gguf_parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Print the model summary and exit without drawing"
+    )
+
     # Info command
-    info_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "info",
         help="Show information about braintop"
     )
@@ -223,6 +286,10 @@ def main(argv: Optional[list] = None) -> int:
     
     if args.command == "visualize":
         return visualize_command(args)
+    elif args.command == "gguf":
+        if args.max_blocks is not None and args.max_blocks < 2:
+            parser.error("--max-blocks must be at least 2")
+        return gguf_command(args)
     elif args.command == "info":
         return info_command(args)
     

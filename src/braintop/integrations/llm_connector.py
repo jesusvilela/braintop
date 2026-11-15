@@ -51,7 +51,7 @@ class LLMConnector(BaseIntegration):
         Returns:
             True if connection successful
         """
-        self.client = self.config.get("client")
+        self.client = self._wrap_client(self.config.get("client"))
         if self.provider == "custom" and self.client is None:
             self.client = {
                 "embedding_fn": self.config.get("embedding_fn"),
@@ -63,6 +63,34 @@ class LLMConnector(BaseIntegration):
         # core package remains lightweight and import-safe in offline contexts.
         self.is_connected = True
         return True
+
+    _ADAPTERS = {
+        "openai": OpenAIAdapter,
+        "llama-cpp": LlamaCppAdapter,
+        "llama_cpp": LlamaCppAdapter,
+        "llamacpp": LlamaCppAdapter,
+        "sentence-transformers": SentenceTransformerAdapter,
+        "sentence_transformers": SentenceTransformerAdapter,
+    }
+
+    def _wrap_client(self, client: Any) -> Any:
+        """Wrap a raw vendor SDK client in the packaged adapter for the provider.
+
+        Clients that already expose the adapter interface (``get_embeddings``),
+        dict clients, and configurations without a client are returned as-is,
+        so no vendor SDK is ever imported here.
+        """
+        adapter_cls = self._ADAPTERS.get(self.provider.lower())
+        if (
+            adapter_cls is None
+            or client is None
+            or isinstance(client, (dict, CallableAdapter))
+            or hasattr(client, "get_embeddings")
+        ):
+            return client
+        adapter = adapter_cls(self.model_name, client=client, config=self.config)
+        adapter.connect()
+        return adapter
 
     def disconnect(self) -> None:
         """Close connection to the provider."""
@@ -132,16 +160,24 @@ class LLMConnector(BaseIntegration):
         Returns:
             Dictionary with model information
         """
-        return {
+        info: Dict[str, Any] = {
             "provider": self.provider,
             "model_name": self.model_name,
             "is_connected": self.is_connected,
             "embedding_dim": self.config.get("embedding_dim", 768),
             "supports_inference": self._supports_callable("inference_fn")
+            or callable(getattr(self.client, "run_inference", None))
             or self.provider == "mock",
             "supports_attention": self._supports_callable("attention_fn")
+            or callable(getattr(self.client, "get_attention_weights", None))
             or self.provider == "mock",
         }
+        adapter_info = getattr(self.client, "get_model_info", None)
+        if callable(adapter_info):
+            details = adapter_info()
+            if isinstance(details, dict) and "adapter" in details:
+                info["adapter"] = details["adapter"]
+        return info
 
     def get_attention_weights(
         self,

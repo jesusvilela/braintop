@@ -148,7 +148,7 @@ class TopologyVisualizer:
             y=y_coords,
             z=z_coords,
             mode='markers+text',
-            name=f"{layer.name} ({layer.layer_type})",
+            name=f"{layer.name} ({getattr(layer.layer_type, 'value', layer.layer_type)})",
             marker=dict(
                 size=marker_sizes,
                 opacity=0.85,

@@ -3,7 +3,6 @@
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import numpy as np
 from pydantic import BaseModel, Field
 
 
