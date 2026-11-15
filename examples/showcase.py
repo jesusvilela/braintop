@@ -135,7 +135,7 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
 
     concepts = [
         "attention", "context", "token", "sequence", "decoder",
-        "embedding", "vector", "latent space", "representation", "similarity",
+        "embedding", "vector", "latent", "representation", "similarity",
         "training", "gradient", "optimizer", "loss", "inference",
     ]
     cluster_centres = rng.normal(size=(3, 24))
@@ -185,6 +185,26 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
         "SEMANTIC TOPOLOGY",
         "Synthetic demonstration vectors · edge weights from nearest-neighbour distance",
     )
+    figure.update_layout(
+        width=1800,
+        height=1200,
+        scene=dict(
+            aspectmode="cube",
+            camera=dict(
+                eye=dict(x=0.95, y=1.1, z=0.8),
+                projection=dict(type="orthographic"),
+            ),
+        ),
+    )
+    concept_trace = next(
+        trace for trace in figure.data if trace.name == "Concept vectors · PCA view"
+    )
+    concept_trace.textfont = dict(size=10, color="#f4f6fb")
+    concept_trace.textposition = [
+        "top left", "bottom right", "top center", "bottom left", "top right",
+        "bottom center", "top left", "bottom right", "top center", "bottom left",
+        "top right", "bottom center", "top left", "bottom right", "top center",
+    ]
     _save(figure, output_dir, "semantic-topology", require_static)
 
 
