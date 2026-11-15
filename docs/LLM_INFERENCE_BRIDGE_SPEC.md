@@ -13,7 +13,18 @@ The LLM inference bridge makes `braintop` useful with either real model clients 
   - `embedding_fn(texts) -> array-like[n_texts, embedding_dim]`
   - `inference_fn(prompt, context=None) -> str | dict`
   - `attention_fn(text, layer=None) -> array-like[n_tokens, n_tokens]`
-- Named external providers can be connected when a pre-built `client` is supplied in `config`; the connector does not import vendor SDKs directly.
+- `openai`: packaged adapter for OpenAI-compatible clients.
+- `sentence-transformers`: packaged embedding adapter.
+- `llama-cpp`: packaged adapter for `llama-cpp-python`.
+- Other provider names are accepted only when the supplied client implements at least one of
+  `get_embeddings`, `run_inference`, or `get_attention_weights`.
+
+Adapters import optional vendor SDKs lazily. Install the matching extra (for example,
+`pip install -e ".[openai]"`) or inject a prebuilt client through `config["client"]`.
+
+A missing capability is an explicit `NotImplementedError`; an unknown provider without a
+compatible client is a `ValueError`. Neither case silently falls back to mock output.
+The `mock` provider is the only provider that synthesizes deterministic demo data.
 
 ## Reliability Requirements
 
@@ -21,10 +32,12 @@ The LLM inference bridge makes `braintop` useful with either real model clients 
 2. Embeddings are L2-normalized unless `normalize_embeddings=False` is configured.
 3. Empty text batches and blank text entries are rejected with `ValueError`.
 4. Mock embeddings are deterministic across connector instances and process runs.
-5. Topology extraction computes cosine similarities from normalized embeddings, excludes self-loops, and emits deterministic edge ordering.
-6. `top_k` relationship extraction keeps at most `top_k` outgoing candidates per source node before thresholding.
-7. Inference responses are normalized into dictionaries with `text`, `provider`, `model`, and `metadata` fields.
-8. Attention matrices are square, finite, non-negative, and row-stochastic.
+5. Non-mock providers never synthesize mock embeddings or inference responses when a
+   capability is absent.
+6. Topology extraction computes cosine similarities from normalized embeddings, excludes self-loops, and emits deterministic edge ordering.
+7. `top_k` relationship extraction keeps at most `top_k` outgoing candidates per source node before thresholding.
+8. Inference responses are normalized into dictionaries with `text`, `provider`, `model`, and `metadata` fields.
+9. Attention matrices are square, finite, non-negative, and row-stochastic.
 
 ## Topology Output Schema
 
