@@ -63,6 +63,13 @@ class TopologyVisualizer:
             if include_edges and edge.source in node_ids and edge.target in node_ids
         ]
         metrics = self._compute_node_metrics(nodes_to_plot, edges_to_plot)
+        all_colors = self._metric_values(
+            nodes_to_plot, metrics, color_by, default_value="", scale=1.0
+        )
+        color_range = (
+            (min(all_colors), max(all_colors)) if isinstance(all_colors, list) and all_colors
+            else None
+        )
 
         # Add nodes for each layer
         for idx, layer in enumerate(layers_to_plot):
@@ -73,7 +80,8 @@ class TopologyVisualizer:
                 color_by=color_by,
                 size_by=size_by,
                 layer_color=self._layer_color(idx),
-                show_color_scale=(idx == 0),
+                show_color_scale=(layer is next((l for l in layers_to_plot if l.nodes), None)),
+                color_range=color_range,
             )
 
         # Add inter-layer edges
@@ -111,6 +119,7 @@ class TopologyVisualizer:
         size_by: str,
         layer_color: str,
         show_color_scale: bool = True,
+        color_range: Optional[tuple] = None,
     ) -> None:
         """Add nodes from a layer to the figure.
         
@@ -122,9 +131,10 @@ class TopologyVisualizer:
             return
         
         # Extract positions
-        x_coords = [node.position[0] for node in layer.nodes]
-        y_coords = [node.position[1] for node in layer.nodes]
-        z_coords = [node.position[2] for node in layer.nodes]
+        world_positions = [self.topology.world_position(node) for node in layer.nodes]
+        x_coords = [pos[0] for pos in world_positions]
+        y_coords = [pos[1] for pos in world_positions]
+        z_coords = [pos[2] for pos in world_positions]
         
         # Create hover text
         hover_texts = [
@@ -153,6 +163,8 @@ class TopologyVisualizer:
                 colorscale="Viridis",
                 showscale=show_color_scale,
                 colorbar=dict(title=color_by),
+                cmin=color_range[0] if color_range else None,
+                cmax=color_range[1] if color_range else None,
             )
             if isinstance(marker_colors, list)
             else dict(color=marker_colors)
@@ -177,62 +189,89 @@ class TopologyVisualizer:
             hoverinfo='text'
         ))
     
+
     def _add_edges(self, fig: go.Figure, edges: List[EdgeModel]) -> None:
-        """Add edges to the figure.
-        
-        Args:
-            fig: Plotly figure to add edges to
-            edges: List of edges to visualize
+        """Batch edges by topology role and coarse weight class.
+
+        This avoids one Plotly trace per edge. Stroke widths encode coarse
+        *display* weight bins, not an intrinsic manifold metric. Raw weights
+        remain available in get_network_graph().
         """
-        # Get all nodes for lookup
-        all_nodes = self.topology.get_all_nodes()
-        node_dict = {node.id: node for node in all_nodes}
-        
-        # Create edge traces
+        node_dict = {node.id: node for node in self.topology.get_all_nodes()}
+        intra_ids = {edge.id for edge in self.topology.intra_layer_edges}
+        grouped: Dict[tuple, Dict[str, List[Optional[float]]]] = {}
         for edge in edges:
-            source_node = node_dict.get(edge.source)
-            target_node = node_dict.get(edge.target)
-            
-            if source_node and target_node:
-                x_coords = [source_node.position[0], target_node.position[0], None]
-                y_coords = [source_node.position[1], target_node.position[1], None]
-                z_coords = [source_node.position[2], target_node.position[2], None]
-                
-                weight = edge.weight
-                fig.add_trace(go.Scatter3d(
-                    x=x_coords,
-                    y=y_coords,
-                    z=z_coords,
-                    mode='lines',
-                    line=dict(color='rgba(120,120,120,0.6)', width=1 + weight * 2),
-                    hoverinfo='skip',
-                    showlegend=False,
-                    opacity=0.5
-                ))
+            source = node_dict.get(edge.source)
+            target = node_dict.get(edge.target)
+            if source is None or target is None:
+                continue
+            if not np.isfinite(edge.weight):
+                raise ValueError("Edge weights must be finite")
+            p = self.topology.world_position(source)
+            q = self.topology.world_position(target)
+            weight_bin = 0 if edge.weight < 0.33 else (1 if edge.weight < 0.66 else 2)
+            kind = "intra" if edge.id in intra_ids else "inter"
+            group = grouped.setdefault((kind, weight_bin), {"x": [], "y": [], "z": []})
+            for axis, a, b in (("x", p[0], q[0]), ("y", p[1], q[1]), ("z", p[2], q[2])):
+                group[axis].extend((a, b, None))
+
+        for (kind, weight_bin), coords in sorted(grouped.items()):
+            color = "rgba(97,220,208,0.7)" if kind == "intra" else "rgba(160,152,202,0.52)"
+            fig.add_trace(go.Scatter3d(
+                x=coords["x"], y=coords["y"], z=coords["z"], mode="lines",
+                name=f"{kind} relations", showlegend=False, hoverinfo="skip",
+                line=dict(color=color, width=(1.2, 2.1, 3.0)[weight_bin]),
+            ))
 
     def _compute_node_metrics(
         self,
         nodes: Iterable[NodeModel],
         edges: Iterable[EdgeModel],
     ) -> Dict[str, Dict[str, float]]:
-        """Compute graph metrics for nodes to enrich visualization."""
+        """Calculate unweighted hops by default, or explicit inverse-strength paths.
+
+        Edge weights are affinities, NOT shortest-path distances.
+        When centrality_distance='inverse_strength', positive affinities w
+        become path costs 1/w. Unweighted degree remains the neighbour count.
+        """
+        distance_mode = self.config.get("centrality_distance", "hops")
+        if distance_mode not in ("hops", "inverse_strength"):
+            raise ValueError("centrality_distance must be 'hops' or 'inverse_strength'")
+
         graph = nx.Graph()
         for node in nodes:
             graph.add_node(node.id)
         for edge in edges:
-            graph.add_edge(edge.source, edge.target, weight=edge.weight)
+            if not np.isfinite(edge.weight):
+                raise ValueError("Edge weights must be finite")
+            if distance_mode == "inverse_strength" and edge.weight <= 0:
+                raise ValueError("inverse_strength requires positive edge weights")
+            cost = (1.0 / edge.weight) if distance_mode == "inverse_strength" else 1.0
+            if graph.has_edge(edge.source, edge.target):
+                graph[edge.source][edge.target]["cost"] = min(
+                    graph[edge.source][edge.target]["cost"], cost
+                )
+            else:
+                graph.add_edge(edge.source, edge.target, cost=cost)
 
+        edge_weight = "cost" if distance_mode == "inverse_strength" else None
         degree_map = dict(graph.degree())
-        betweenness = nx.betweenness_centrality(graph) if graph.number_of_edges() else {}
-        closeness = nx.closeness_centrality(graph) if graph.number_of_edges() else {}
-        metrics: Dict[str, Dict[str, float]] = {}
-        for node in nodes:
-            metrics[node.id] = {
+        betweenness = (
+            nx.betweenness_centrality(graph, weight=edge_weight)
+            if graph.number_of_edges() else {}
+        )
+        closeness = (
+            nx.closeness_centrality(graph, distance=edge_weight)
+            if graph.number_of_edges() else {}
+        )
+        return {
+            node.id: {
                 "degree": float(degree_map.get(node.id, 0.0)),
                 "betweenness": float(betweenness.get(node.id, 0.0)),
                 "closeness": float(closeness.get(node.id, 0.0)),
             }
-        return metrics
+            for node in nodes
+        }
 
     @staticmethod
     def _layer_color(index: int) -> str:
@@ -313,7 +352,8 @@ class TopologyVisualizer:
             "z": (0, 1),
         }
         x_index, y_index = axis_pairs[axis]
-        coords = np.array([node.position[axis_index] for node in nodes])
+        world = {node.id: self.topology.world_position(node) for node in nodes}
+        coords = np.array([world[node.id][axis_index] for node in nodes])
         bins = np.linspace(coords.min(), coords.max(), sections + 1)
         fig = make_subplots(
             rows=1,
@@ -328,12 +368,12 @@ class TopologyVisualizer:
             lower = bins[idx]
             upper = bins[idx + 1]
             slice_nodes = [
-                node for node in nodes if lower <= node.position[axis_index] <= upper
+                node for node in nodes if lower <= world[node.id][axis_index] <= upper
             ]
             if not slice_nodes:
                 continue
-            x_coords = [node.position[x_index] for node in slice_nodes]
-            y_coords = [node.position[y_index] for node in slice_nodes]
+            x_coords = [world[node.id][x_index] for node in slice_nodes]
+            y_coords = [world[node.id][y_index] for node in slice_nodes]
             fig.add_trace(
                 go.Scatter(
                     x=x_coords,
@@ -410,13 +450,17 @@ class TopologyVisualizer:
                 {
                     "label": node.label,
                     "position": node.position,
+                    "world_position": self.topology.world_position(node),
                     "layer_id": node.layer_id,
                 }
             )
             G.add_node(node.id, **attributes)
         
         # Add edges
+        intra_ids = {edge.id for edge in self.topology.intra_layer_edges}
         for edge in self.topology.get_all_edges():
-            G.add_edge(edge.source, edge.target, weight=edge.weight)
+            G.add_edge(edge.source, edge.target, weight=edge.weight,
+                       role="intra" if edge.id in intra_ids else "inter",
+                       **edge.metadata)
         
         return G
