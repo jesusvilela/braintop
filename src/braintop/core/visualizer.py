@@ -266,9 +266,10 @@ class TopologyVisualizer:
         layer_type = (
             layer.layer_type.value if hasattr(layer.layer_type, "value") else layer.layer_type
         )
-        lines = [
-            f"ID: {node.id}",
-            f"Label: {node.label}",
+        lines = [f"ID: {node.id}"]
+        if node.label:
+            lines.append(f"Label: {node.label}")
+        lines += [
             f"Layer: {layer.name}",
             f"Layer type: {layer_type}",
         ]

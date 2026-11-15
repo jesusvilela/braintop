@@ -43,7 +43,7 @@ class LLMConnector(BaseIntegration):
         super().__init__(config)
         self.provider = provider
         self.model_name = model_name or "default"
-        self.client = None
+        self.client: Any = None
 
     def connect(self) -> bool:
         """Establish connection to the LLM provider.
@@ -64,7 +64,7 @@ class LLMConnector(BaseIntegration):
         self.is_connected = True
         return True
 
-    _ADAPTERS = {
+    _ADAPTERS: Dict[str, Any] = {
         "openai": OpenAIAdapter,
         "llama-cpp": LlamaCppAdapter,
         "llama_cpp": LlamaCppAdapter,

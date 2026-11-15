@@ -362,8 +362,8 @@ class GGUFLoader(BaseIntegration):
         """Group block tensors by block.
 
         Returns:
-            One entry per block, in file order of block prefix and then by block
-            index, each with the block's tensors and per-component parameter counts.
+            One entry per block, ordered by block prefix (encoder first, then
+            decoder, then file order) and then by block index, each with the block's tensors and per-component parameter counts.
         """
         blocks: Dict[Tuple[str, int], Dict[str, Any]] = {}
         prefix_order: Dict[str, int] = {}
@@ -389,7 +389,16 @@ class GGUFLoader(BaseIntegration):
                 by_component.get(tensor["component"], 0) + tensor["elements"]
             )
 
-        ordered = sorted(blocks.items(), key=lambda kv: (prefix_order[kv[0][0]], kv[0][1]))
+        # Encoder blocks come before decoder blocks whatever the file order.
+        rank = {"enc": -2, "encoder": -2, "dec": -1, "decoder": -1}
+        ordered = sorted(
+            blocks.items(),
+            key=lambda kv: (
+                rank.get(kv[0][0].rsplit(".", 1)[-1], 0),
+                prefix_order[kv[0][0]],
+                kv[0][1],
+            ),
+        )
         result = []
         for _, entry in ordered:
             entry["num_tensors"] = len(entry["tensors"])
@@ -513,10 +522,13 @@ class GGUFLoader(BaseIntegration):
                         ring_radius * math.sin(angle),
                         z,
                     ),
-                    label=_short_name(tensor["name"]),
+                    # Left blank so only stage names are drawn; the tensor's
+                    # name and details appear on hover.
+                    label="",
                     layer_id=layer_id,
                     metadata={
                         "tensor": tensor["name"],
+                        "short_name": _short_name(tensor["name"]),
                         "role": tensor["component"],
                         "shape": tensor["shape_str"],
                         "dtype": tensor["dtype"],

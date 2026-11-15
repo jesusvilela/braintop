@@ -114,6 +114,10 @@ def test_topology_structure(demo):
         "output.weight", "output_norm.weight",
     ]
 
+    # Only stage hubs carry a visible label; tensors are identified on hover.
+    assert [n.label for n in nodes if n.label] == [layer.name for layer in topology.layers]
+    assert all(n.metadata["short_name"] for n in nodes if "tensor" in n.metadata)
+
     node_ids = {n.id for n in nodes}
     assert len(node_ids) == len(nodes)
     pairs = collections.Counter((e.source, e.target) for e in topology.inter_layer_edges)
@@ -224,3 +228,23 @@ def test_cli_gguf_command(demo, tmp_path, capsys):
 
     assert cli_main(["gguf", str(demo.file_path), "--summary"]) == 0
     assert cli_main(["gguf", str(tmp_path / "missing.gguf")]) == 1
+
+
+def test_encoder_blocks_precede_decoder_blocks(tmp_path):
+    tensors = [
+        ("token_embd.weight", [4, 8]),
+        ("dec.blk.0.attn_q.weight", [4, 4]),
+        ("dec.blk.0.cross_attn_q.weight", [4, 4]),
+        ("dec.blk.1.ffn_up.weight", [4, 8]),
+        ("enc.blk.0.attn_q.weight", [4, 4]),
+        ("enc.blk.1.ffn_up.weight", [4, 8]),
+        ("enc.output_norm.weight", [4]),
+    ]
+    path = write_gguf(tmp_path / "t5.gguf", {"general.architecture": "t5"}, tensors)
+    loader = GGUFLoader()
+    loader.load_file(path)
+    assert [(b["prefix"], b["layer_num"]) for b in loader.get_layer_info()] == [
+        ("enc", 0), ("enc", 1), ("dec", 0), ("dec", 1),
+    ]
+    names = [layer.name for layer in loader.build_topology().layers]
+    assert names == ["Embedding", "enc.blk.0", "enc.blk.1", "dec.blk.0", "dec.blk.1", "Output"]

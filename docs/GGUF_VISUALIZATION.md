@@ -16,8 +16,8 @@ The figure is an inventory of the file's tensors:
 - Each stage has a hub node at its centre and one node per tensor on a ring
   around it, grouped by role (normalization, attention, feed-forward).
 - Node size is the tensor's parameter count relative to the largest tensor.
-- Hovering a tensor shows its full name, role, shape, storage type and
-  parameter count.
+- Only stage names are drawn as text. Hovering a tensor shows its full name,
+  role, shape, storage type and parameter count.
 - The layout is deterministic: the same file always gives the same figure.
 
 It does not show weight values, activations, attention patterns or anything
@@ -103,12 +103,18 @@ example `llama.attention.head_count` and `llama.attention.head_count_kv`.
 
 - The parser is cross-checked in the test suite against the official `gguf`
   Python reader (tensor names, dimensions and data offsets).
-- It was run against one real model, `stories260K.gguf` from
-  `ggml-org/models` (llama architecture, 5 blocks): tensor count, parameter
-  count and offsets matched the official reader.
-- Other architectures have not been tested. Models whose tensor names do not
-  follow the patterns above will parse correctly but show most tensors under
-  "other".
+- One complete real model, `stories260K.gguf` from `ggml-org/models` (llama,
+  5 blocks), was compared with the official reader: tensor count, parameter
+  count and offsets matched.
+- The headers of six further published models were read and every tensor
+  received a role (none fell into "other"): GPT-2, BERT (`bge-small-en-v1.5`),
+  Qwen2.5-0.5B, Phi-3-mini, Gemma-2-2B and Flan-T5-small (encoder and decoder
+  blocks, drawn encoder first).
+- The figure was rendered to an image and inspected for the llama and Qwen
+  models.
+- Architectures outside that list have not been tested. Models whose tensor
+  names do not follow the patterns above will parse correctly but show
+  tensors under "other".
 
 ## Limitations
 
