@@ -211,3 +211,13 @@ def test_legacy_positional_topology_constructor_preserves_metadata_slot():
     topology = Topology("old", "Legacy", [], [], {"source": "legacy"})
     assert topology.metadata == {"source": "legacy"}
     assert topology.intra_layer_edges == []
+
+
+def test_index_recovers_if_user_adds_node_to_public_layer_list():
+    """Compatibility with callers that mutate layer.nodes after add_layer."""
+    topo = two_layer_builder().topology
+    topo.get_layer("target").nodes.append(
+        NodeModel(id="t3", layer_id="target", position=(5., 0., 0.))
+    )
+    topo.add_inter_layer_edge(EdgeModel(id="e-direct", source="s0", target="t3"))
+    assert topo.get_all_edges()[-1].target == "t3"
