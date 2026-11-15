@@ -155,3 +155,52 @@ def test_global_color_range_and_batched_edge_traces():
     assert len(lines) <= 6
     # Batched traces still contain three entries per edge: start, end, separator.
     assert sum(len(t.x) for t in lines) == 3 * len(b.topology.inter_layer_edges)
+
+
+def test_topology_rejects_mislabeled_edges_and_duplicate_ids():
+    b = two_layer_builder()
+    topo = b.topology
+    with pytest.raises(ValueError, match="Duplicate layer"):
+        topo.add_layer(LayerModel(
+            id="source", name="duplicate", layer_type=LayerType.CONCEPTUAL
+        ))
+    with pytest.raises(ValueError, match="Node IDs must be unique"):
+        topo.add_layer(LayerModel(
+            id="other", name="other", layer_type=LayerType.CONCEPTUAL,
+            nodes=[NodeModel(id="s0", layer_id="other", position=(0., 0., 0.))],
+        ))
+    with pytest.raises(ValueError, match="distinct layers"):
+        topo.add_inter_layer_edge(EdgeModel(id="wrong", source="s0", target="s1"))
+    with pytest.raises(ValueError, match="share a layer"):
+        topo.add_intra_layer_edge(EdgeModel(id="wrong", source="s0", target="t0"))
+    with pytest.raises(ValueError, match="existing nodes"):
+        topo.add_intra_layer_edge(EdgeModel(id="wrong", source="s0", target="missing"))
+
+    topo.add_intra_layer_edge(EdgeModel(
+        id="same", source="s0", target="s1", metadata={"weight": 123.0, "role": "fake"},
+        weight=0.75
+    ))
+    with pytest.raises(ValueError, match="Duplicate edge"):
+        topo.add_intra_layer_edge(EdgeModel(id="same", source="s0", target="s1"))
+
+    graph = TopologyVisualizer(topo).get_network_graph()
+    assert graph.edges["s0", "s1"]["role"] == "intra"
+    assert graph.edges["s0", "s1"]["weight"] == pytest.approx(0.75)
+
+
+def test_llm_generated_similarity_relations_are_intralayer():
+    from braintop.integrations.llm_connector import LLMConnector
+
+    connector = LLMConnector(
+        provider="mock",
+        config={"similarity_threshold": 0.9, "top_k": 1},
+    )
+    connector.connect()
+    builder = TopologyBuilder("semantic-links", "Semantic links")
+    builder.add_layer_from_llm("texts", connector, ["identical", "identical"])
+    topology = builder.build()
+
+    assert len(topology.intra_layer_edges) == 1
+    assert len(topology.inter_layer_edges) == 0
+    assert topology.compute_statistics()["total_edges"] == 1
+    assert TopologyVisualizer(topology).get_network_graph().number_of_edges() == 1
