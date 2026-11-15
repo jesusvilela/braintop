@@ -76,7 +76,7 @@ def test_visualizer_produces_sectional_and_ablation_views():
     section = visualizer.create_sectional_study(axis="z", sections=2)
     ablations = visualizer.create_ablation_figures()
 
-    assert len(section.data) >= 0
+    assert len(section.data) > 0
     assert "no_edges" in ablations
     assert "only_concepts" in ablations
     assert "without_sphere" in ablations
