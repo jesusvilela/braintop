@@ -59,7 +59,7 @@ A layer is a choice of representation, not a claim that every kind of data natur
 
 | Layer | What it does | Current representation |
 |---|---|---|
-| **Conceptual** | Places labels and supplied high-dimensional vectors in a shared view | Centred SVD/PCA projection to three coordinates; random projection is the fallback |
+| **Conceptual** | Places labels and supplied high-dimensional vectors in a shared view | Centred SVD/PCA projection by default, with random projection as an explicit alternative |
 | **Sphere** | Samples points on a positively curved surface | Spherical coordinates mapped to 3D Cartesian coordinates |
 | **Torus** | Gives periodic structure a place to live | Toroidal coordinates with configurable major and minor radii |
 | **Hyperbolic** | Explores negatively curved, tree-friendly geometry | Finite geodesic disk in the Poincaré disk model, with a depth coordinate for display |
