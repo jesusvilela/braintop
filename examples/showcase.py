@@ -110,10 +110,10 @@ def geometry_atlas(output_dir: Path, require_static: bool) -> None:
     )
     for trace in figure.data:
         if trace.mode == "markers+text":
-            trace.marker.size = 18
+            trace.marker.size = 12
     figure.update_layout(
         scene=dict(
-            camera=dict(eye=dict(x=0.75, y=0.82, z=0.62)),
+            camera=dict(eye=dict(x=1.55, y=1.65, z=1.25)),
             annotations=[
                 dict(
                     x=-4.0, y=0.0, z=1.75, text="SPHERE",
@@ -199,15 +199,15 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
         width=1800,
         height=1200,
         scene=dict(
-            aspectmode="cube",
-            camera=dict(eye=dict(x=0.48, y=0.56, z=0.42)),
+            aspectmode="data",
+            camera=dict(eye=dict(x=1.2, y=1.3, z=1.05)),
         ),
     )
     concept_trace = next(
         trace for trace in figure.data if trace.name == "Concept network · PCA view"
     )
-    concept_trace.marker.size = [44] * len(concept_trace.x)
-    concept_trace.textfont = dict(size=18, color="#f4f6fb")
+    concept_trace.marker.size = [36] * len(concept_trace.x)
+    concept_trace.textfont = dict(size=14, color="#f4f6fb")
     concept_trace.textposition = [
         "top left", "bottom right", "top center", "bottom left", "top right",
         "bottom center", "top left", "bottom right", "top center", "bottom left",
@@ -215,7 +215,7 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
     ]
     for trace in figure.data:
         if trace.mode == "lines":
-            trace.line.width = 4
+            trace.line.width = 3
     _save(figure, output_dir, "semantic-topology", require_static)
 
 def _save(figure: Any, output_dir: Path, stem: str, require_static: bool) -> None:
