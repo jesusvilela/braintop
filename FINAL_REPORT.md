@@ -1,5 +1,9 @@
 # Braintop - Final Implementation Report
 
+> **Historical snapshot (June 2026).** The completion percentage, test results, coverage
+> and security claims below describe the state at the time this report was written. They
+> are not a current release certification; consult the current CI workflow and README.
+
 ## 🎉 Project Completion Status: 100%
 
 ### Executive Summary
