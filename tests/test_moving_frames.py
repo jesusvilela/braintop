@@ -204,3 +204,10 @@ def test_llm_generated_similarity_relations_are_intralayer():
     assert len(topology.inter_layer_edges) == 0
     assert topology.compute_statistics()["total_edges"] == 1
     assert TopologyVisualizer(topology).get_network_graph().number_of_edges() == 1
+
+
+def test_legacy_positional_topology_constructor_preserves_metadata_slot():
+    """Do not mistake the historical fifth positional argument for intra-layer edges."""
+    topology = Topology("old", "Legacy", [], [], {"source": "legacy"})
+    assert topology.metadata == {"source": "legacy"}
+    assert topology.intra_layer_edges == []
