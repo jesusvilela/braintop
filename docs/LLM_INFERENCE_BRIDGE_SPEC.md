@@ -1,4 +1,4 @@
-# LLM Inference Bridge Production Spec
+# LLM Inference Bridge Contract
 
 ## Goals
 
