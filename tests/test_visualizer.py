@@ -80,3 +80,19 @@ def test_visualizer_produces_sectional_and_ablation_views():
     assert "no_edges" in ablations
     assert "only_concepts" in ablations
     assert "without_sphere" in ablations
+
+
+def test_visualizer_rejects_unknown_metrics_and_section_parameters():
+    """Public visualizer arguments should fail clearly instead of plotting zeros."""
+    visualizer = TopologyVisualizer(_sample_topology())
+
+    import pytest
+
+    with pytest.raises(ValueError, match="Unsupported color_by"):
+        visualizer.create_figure(color_by="centrality-ish")
+
+    with pytest.raises(ValueError, match="axis must be"):
+        visualizer.create_sectional_study(axis="q")
+
+    with pytest.raises(ValueError, match="positive integer"):
+        visualizer.create_sectional_study(axis="z", sections=0)
