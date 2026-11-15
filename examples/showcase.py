@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 
 from braintop.core.visualizer import TopologyVisualizer
+from braintop.integrations.llm_connector import LLMConnector
 from braintop.utils.builders import TopologyBuilder
 
 
@@ -129,7 +130,7 @@ def geometry_atlas(output_dir: Path, require_static: bool) -> None:
 
 
 def semantic_topology(output_dir: Path, require_static: bool) -> None:
-    """Render a deterministic synthetic concept graph linked to a sphere layer."""
+    """Render a deterministic concept network from synthetic embedding vectors."""
     rng = np.random.default_rng(42)
     np.random.seed(42)
 
@@ -141,78 +142,73 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
     cluster_centres = rng.normal(size=(3, 24))
     embeddings = np.vstack(
         [
-            cluster_centres[group] + rng.normal(scale=0.16, size=24)
+            cluster_centres[group] + rng.normal(scale=0.12, size=24)
             for group in range(3)
             for _ in range(5)
         ]
     )
 
+    connector = LLMConnector(
+        provider="custom",
+        model_name="synthetic-demo",
+        config={
+            "embedding_fn": lambda texts: embeddings,
+            "similarity_threshold": 0.72,
+            "top_k": 2,
+        },
+    )
+    connector.connect()
+
     builder = TopologyBuilder("semantic_topology", "Semantic topology")
-    builder.add_conceptual_layer(
+    builder.add_layer_from_llm(
         "concepts",
-        num_nodes=len(concepts),
-        concepts=concepts,
-        embeddings=embeddings,
+        connector,
+        concepts,
         projection_method="pca",
-        spacing_factor=1.65,
-    )
-    builder.add_riemannian_layer(
-        "geometric_scaffold",
-        num_nodes=28,
-        manifold_type="sphere",
-        radius=2.7,
-    )
-    builder.connect_layers(
-        "concepts", "geometric_scaffold", "nearest", num_connections=2
+        spacing_factor=1.7,
     )
     topology = builder.build()
+    connector.disconnect()
 
-    for layer in topology.layers:
-        if layer.id == "concepts":
-            layer.name = "Concept vectors · PCA view"
-        else:
-            layer.name = "Geometric scaffold · sphere"
-            for node in layer.nodes:
-                node.label = ""
-
+    layer = topology.get_layer("concepts")
+    layer.name = "Concept network · PCA view"
     short_labels = [
         "attn", "ctx", "tok", "seq", "dec",
         "emb", "vec", "latent", "repr", "sim",
         "train", "grad", "opt", "loss", "infer",
     ]
-    for node, short_label in zip(topology.get_layer("concepts").nodes, short_labels):
+    for node, short_label in zip(layer.nodes, short_labels):
         # The full concept remains in node.metadata["concept"] for hover inspection.
         node.label = short_label
 
     visualizer = TopologyVisualizer(topology)
     figure = visualizer.create_figure(
-        color_by="betweenness",
+        color_by="degree",
         size_by="degree",
     )
     figure = _style_figure(
         figure,
         "SEMANTIC TOPOLOGY",
-        "Synthetic demonstration vectors · edge weights from nearest-neighbour distance",
+        "Synthetic vectors · cosine-similarity edges · PCA display coordinates",
     )
     figure.update_layout(
         width=1800,
         height=1200,
         scene=dict(
-            aspectmode="cube",
-            camera=dict(eye=dict(x=0.82, y=0.95, z=0.72)),
+            aspectmode="data",
+            camera=dict(eye=dict(x=1.2, y=1.3, z=1.05)),
         ),
     )
     concept_trace = next(
-        trace for trace in figure.data if trace.name == "Concept vectors · PCA view"
+        trace for trace in figure.data if trace.name == "Concept network · PCA view"
     )
-    concept_trace.textfont = dict(size=9, color="#f4f6fb")
+    concept_trace.textfont = dict(size=10, color="#f4f6fb")
     concept_trace.textposition = [
         "top left", "bottom right", "top center", "bottom left", "top right",
         "bottom center", "top left", "bottom right", "top center", "bottom left",
         "top right", "bottom center", "top left", "bottom right", "top center",
     ]
     _save(figure, output_dir, "semantic-topology", require_static)
-
 
 def _save(figure: Any, output_dir: Path, stem: str, require_static: bool) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
