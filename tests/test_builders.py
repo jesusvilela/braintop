@@ -1,7 +1,5 @@
 """Tests for TopologyBuilder."""
 
-import pytest
-import numpy as np
 
 from braintop.utils.builders import TopologyBuilder
 from braintop.integrations.llm_connector import LLMConnector

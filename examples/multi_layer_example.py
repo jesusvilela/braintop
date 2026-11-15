@@ -94,7 +94,7 @@ def main():
     
     # Get network graph for analysis
     graph = visualizer.get_network_graph()
-    print(f"\nNetwork statistics:")
+    print("\nNetwork statistics:")
     print(f"  Nodes: {graph.number_of_nodes()}")
     print(f"  Edges: {graph.number_of_edges()}")
     

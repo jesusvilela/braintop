@@ -1,6 +1,6 @@
 """Basic example: Creating and visualizing a simple topology."""
 
-from braintop import Topology, TopologyVisualizer, ConceptualLayer, RiemannianLayer
+from braintop import TopologyVisualizer
 from braintop.utils.builders import TopologyBuilder
 
 

@@ -1,7 +1,5 @@
 """Tests for core topology module."""
 
-import pytest
-import numpy as np
 
 from braintop.core.topology import (
     Topology, LayerModel, NodeModel, EdgeModel, LayerType

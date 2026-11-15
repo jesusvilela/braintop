@@ -33,6 +33,13 @@ Creates a complex multi-layer topology with various layer types connected togeth
 ### riemannian_example.py
 Showcases different Riemannian manifold types (sphere, torus, hyperbolic).
 
+### solution_plan_implementation.py
+Runs the plan in `SOLUTION_PLAN.md` and asserts each of its constraint checks.
+
+### create_demo_gguf.py and visualize_gguf.py
+Create a tiny GGUF file and draw its tensor layout. See
+`docs/GGUF_VISUALIZATION.md`.
+
 ## Output
 
 Each example generates an HTML file that can be opened in a browser to view the interactive 3D visualization.

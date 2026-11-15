@@ -1,5 +1,7 @@
 # Braintop - Final Implementation Report
 
+> **Historical snapshot.** This document describes the initial implementation as first merged. Its test counts, coverage figures and status claims are from that date and are not maintained; the package is alpha (see `setup.py`). For the current state see [README.md](README.md) and the CI results.
+
 ## 🎉 Project Completion Status: 100%
 
 ### Executive Summary

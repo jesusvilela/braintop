@@ -1,6 +1,6 @@
 """Riemannian layer for curved geometry topology."""
 
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Any, Tuple, Optional
 import numpy as np
 
 from braintop.core.topology import LayerModel, NodeModel, LayerType

@@ -279,7 +279,7 @@
 **Preconditions**:
 - `visualization` exists
 - `filepath` is valid writable path
-- `format ∈ {"html", "png", "svg", "json"}`
+- `format ∈ {"html", "png", "jpg", "svg"}`
 
 **Effects**:
 - Visualization data serialized to specified format
@@ -298,7 +298,7 @@
 
 **Effects**:
 - NetworkX graph object created
-- Nodes added with position attributes
+- Nodes added with their metadata as attributes (positions are not exported)
 - Edges added with weight attributes
 
 **Postconditions**:
@@ -336,7 +336,7 @@
 
 **Postconditions**:
 - Embeddings returned with shape `(len(texts), embedding_dim)`
-- Embeddings are normalized vectors
+- Rows are unit length unless `normalize_embeddings` is disabled
 
 ---
 
@@ -369,7 +369,7 @@
 2. **Reference Integrity**:
    - Every `node.layer_id` must reference an existing layer in the topology
    - Every `edge.source` and `edge.target` must reference existing nodes
-   - Inter-layer edges must connect nodes from different layers
+   - Edges created by `CONNECT_LAYERS` connect nodes from different layers. Similarity edges from `ADD_LAYER_FROM_LLM` connect nodes within one layer but are stored in the same `inter_layer_edges` list
 
 3. **Cardinality Constraints**:
    - A topology must have at least 1 layer to be visualizable
@@ -403,9 +403,9 @@
 ### 4.3 Computational Constraints
 
 8. **Scalability Constraints**:
-   - Visualization performance degrades with large node counts (>10,000 nodes)
+   - Each edge is drawn as a separate Plotly trace, so rendering cost grows with the edge count (no limit has been measured)
    - Browser rendering limited by WebGL capabilities
-   - Memory usage grows O(N²) for all-to-all connections
+   - All-to-all connection creates N₁ × N₂ edges
 
 9. **Numerical Constraints**:
    - Position coordinates must be finite (not NaN or Inf)
@@ -413,7 +413,7 @@
    - Edge weights must be finite and non-negative
 
 10. **Configuration Constraints**:
-    - Projection method must be valid: `{"pca", "tsne", "umap", "random"}`
+    - Projection method must be valid: `{"pca", "random"}`
     - Manifold type must be valid: `{"sphere", "torus", "hyperbolic"}`
     - Connection type must be valid: `{"nearest", "random", "all"}`
 
@@ -473,7 +473,7 @@ A successful topology visualization satisfies:
 ### Computational Complexity:
 - **Node generation**: O(N) where N = num_nodes
 - **PCA projection**: O(N × D²) where D = embedding dimension
-- **Nearest neighbor connections**: O(N₁ × N₂ × log(N₂)) with spatial indexing
+- **Nearest neighbor connections**: O(N₁ × N₂ × log(N₂)) (brute force: all distances, then a sort per source node)
 - **All-to-all connections**: O(N₁ × N₂)
 - **Visualization rendering**: O(N + E) where E = num_edges
 

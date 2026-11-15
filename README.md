@@ -16,7 +16,7 @@ A beautiful rich 3D topology visualizer for Large Language Models (LLMs) with mo
 - **🤖 LLM Integration**: Production bridge with deterministic mock mode, custom callables, client-backed providers, validated embeddings, inference responses, and attention matrices
 - **🔗 Agent & Orchestrator Ready**: Designed to integrate with AI agents and orchestration systems
 - **📈 Network Analysis**: Export to NetworkX for advanced graph analysis
-- **📦 GGUF Model Visualization**: Load and visualize **any** GGUF file's architecture in 3D
+- **📦 GGUF Model Files**: Draw the tensor layout of a GGUF file by block, read from its metadata without loading weights
 - **🐍 Pure Python**: Built on numpy, plotly, and scipy
 
 ## 🚀 Quick Start
@@ -73,24 +73,24 @@ braintop visualize -o my_topology.html
 
 ### GGUF Model Visualization
 
-Visualize any GGUF model file in 3D:
+Draw the tensor layout of a GGUF model file (the llama.cpp format), block by
+block and in depth order. Only the file's metadata and tensor directory are
+read, never the weights.
 
 ```bash
-# Visualize a GGUF model
-python examples/visualize_gguf.py path/to/model.gguf
+# Summary only
+braintop gguf path/to/model.gguf --summary
 
-# With custom output file
-python examples/visualize_gguf.py model.gguf --output my_model.html
+# Interactive figure
+braintop gguf path/to/model.gguf -o model.html
 
-# Verbose mode (show detailed architecture)
-python examples/visualize_gguf.py model.gguf --verbose
-
-# Create a demo GGUF file for testing
-python examples/create_demo_gguf.py
-python examples/visualize_gguf.py demo_model.gguf
+# Try it without a model
+python examples/create_demo_gguf.py -o demo_model.gguf
+braintop gguf demo_model.gguf -o demo_model.html
 ```
 
-See [GGUF Visualization Guide](docs/GGUF_VISUALIZATION.md) for detailed documentation.
+See the [GGUF visualization guide](docs/GGUF_VISUALIZATION.md) for what the
+figure shows, how tensors are classified, and what has been verified.
 
 ## 📚 Documentation
 

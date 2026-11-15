@@ -1,5 +1,7 @@
 # Braintop - Project Summary
 
+> **Historical snapshot.** This document describes the initial implementation as first merged. Its test counts, coverage figures and status claims are from that date and are not maintained; the package is alpha (see `setup.py`). For the current state see [README.md](README.md) and the CI results.
+
 ## Overview
 Braintop is a production-ready 3D topology visualizer for Large Language Models with modular architecture supporting multiple geometric layer types.
 

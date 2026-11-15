@@ -1,341 +1,125 @@
-# GGUF Model Visualization Guide
+# GGUF Model Visualization
 
-Braintop now supports visualizing **any** GGUF model file as an interactive 3D topology. This feature allows you to explore the architecture of large language models stored in the GGUF format.
+Braintop can read a GGUF model file (the format used by llama.cpp) and draw
+its tensor layout as an interactive 3D figure.
 
-## What is GGUF?
+## What it shows, and what it does not
 
-GGUF (GPT-Generated Unified Format) is a file format for storing large language models, commonly used by llama.cpp and similar inference engines. It contains model weights, architecture metadata, and tokenizer information in a single file.
+The loader reads the file's header, metadata and tensor directory. It never
+reads tensor data, so a multi-gigabyte model loads in well under a second.
 
-## Features
+The figure is an inventory of the file's tensors:
 
-- **Automatic Architecture Detection**: Extracts model structure from GGUF metadata
-- **Layer Visualization**: Shows transformer blocks, attention mechanisms, and feed-forward networks
-- **3D Geometric Mapping**: Different layer types use different geometries:
-  - **Attention layers**: Spherical geometry (hierarchical relationships)
-  - **Feed-Forward (FFN) layers**: Hyperbolic geometry (tree-like structures)
-  - **Embedding/Output layers**: Conceptual geometry (semantic space)
-- **Interactive Exploration**: Rotate, zoom, and inspect individual tensors
-- **Model Statistics**: View parameter counts, layer information, and architecture details
+- One stage per part of the model: the embedding, each block, and the output.
+- Stages are stacked along the vertical axis in depth order. Height is the
+  block index, so order and depth can be read directly.
+- Each stage has a hub node at its centre and one node per tensor on a ring
+  around it, grouped by role (normalization, attention, feed-forward).
+- Node size is the tensor's parameter count relative to the largest tensor.
+- Hovering a tensor shows its full name, role, shape, storage type and
+  parameter count.
+- The layout is deterministic: the same file always gives the same figure.
 
-## Quick Start
+It does not show weight values, activations, attention patterns or anything
+else that requires running the model. Edges mean "this stage contains this
+tensor" and "this stage follows that one"; they are not a computation graph.
 
-### 1. Basic Usage
-
-```bash
-python examples/visualize_gguf.py path/to/model.gguf
-```
-
-This will create an HTML visualization file: `model_topology.html`
-
-### 2. Custom Output Filename
+## Usage
 
 ```bash
-python examples/visualize_gguf.py model.gguf --output my_viz.html
+# Print a summary only
+braintop gguf model.gguf --summary
+
+# Write an interactive HTML figure
+braintop gguf model.gguf -o model.html
+
+# Draw at most 8 evenly spaced blocks of a deep model
+braintop gguf model.gguf -o model.html --max-blocks 8
 ```
 
-### 3. Verbose Mode (Detailed Information)
+Without `-o` the figure opens in a browser. `-f png|jpg|svg` writes a static
+image and needs the optional `kaleido` package.
+
+With `--max-blocks`, the first and last blocks are always kept and the rest
+are evenly spaced. Blocks keep their true height, so the gaps are visible,
+and each bridging edge records how many blocks it skips (`omitted_blocks`).
+
+### Trying it without a model
 
 ```bash
-python examples/visualize_gguf.py model.gguf --verbose
+python examples/create_demo_gguf.py -o demo_model.gguf
+braintop gguf demo_model.gguf -o demo_model.html
 ```
 
-Shows:
-- Complete metadata
-- All layer details
-- Tensor information
-- Architecture summary
+The demo file is a valid GGUF file with llama.cpp tensor names and
+zero-filled weights. It is not a usable model.
 
-### 4. Open in Browser Immediately
-
-```bash
-python examples/visualize_gguf.py model.gguf --show
-```
-
-## Creating a Demo Model
-
-If you don't have a GGUF file, you can create a small demo model:
-
-```bash
-# Create a minimal demo GGUF file
-python examples/create_demo_gguf.py
-
-# Visualize it
-python examples/visualize_gguf.py demo_model.gguf
-```
-
-The demo model represents a 4-layer transformer with:
-- 4 transformer blocks
-- 768-dimensional embeddings
-- 12 attention heads
-- ~87M parameters
-
-## Command-Line Options
-
-```
-python examples/visualize_gguf.py <gguf_file> [options]
-
-Positional Arguments:
-  gguf_file           Path to the GGUF model file
-
-Optional Arguments:
-  -o, --output FILE   Output HTML filename (default: <model>_topology.html)
-  --show              Open visualization in browser immediately
-  -v, --verbose       Print detailed model information
-  -h, --help          Show help message
-```
-
-## Output Information
-
-When you run the visualizer, you'll see:
-
-### Step 1: Loading GGUF File
-- File size
-- GGUF version
-- Number of tensors and metadata entries
-
-### Step 2: Architecture Extraction
-- Model type (LLaMA, Mistral, etc.)
-- Number of layers identified
-- Geometry types for each layer
-
-### Step 3: Building Topology
-- Layer creation progress
-- Node counts
-
-### Step 4: Connecting Layers
-- Sequential connections (layer-to-layer)
-- Attention-FFN connections (within blocks)
-
-### Step 5: Visualization
-- Total nodes and edges
-- Layer count
-
-### Step 6: Export
-- Output file location and size
-
-## Understanding the Visualization
-
-### Color Coding
-
-Different layers are color-coded in the 3D visualization:
-- **Green**: Conceptual layers (embeddings, output)
-- **Red**: Spherical layers (attention mechanisms)
-- **Blue**: Hyperbolic layers (feed-forward networks)
-
-### Node Labels
-
-Hover over nodes to see:
-- Tensor name
-- Layer number
-- Parameter count
-- Layer type
-
-### Connections
-
-Edges represent:
-- **Sequential flow**: Information flow through the network
-- **Attention-FFN pairs**: Connections within transformer blocks
-
-### Layer Sampling
-
-For models with many layers (>6), the visualizer samples key layers:
-- First two layers (0, 1)
-- Middle layers
-- Last layer
-
-This prevents overcrowding while showing the overall architecture.
-
-## Supported Model Types
-
-The visualizer works with any GGUF file, but has been optimized for:
-
-- **LLaMA** and variants (Alpaca, Vicuna, etc.)
-- **Mistral**
-- **Mixtral**
-- **GPT-J**
-- **MPT**
-- **Falcon**
-
-## Technical Details
-
-### Architecture Detection
-
-The loader extracts architecture from GGUF metadata keys:
-- `general.architecture`: Model type
-- `*.block_count`: Number of transformer layers
-- `*.embedding_length`: Embedding dimensions
-- `*.head_count`: Number of attention heads
-- `*.feed_forward_length`: FFN dimensions
-- `*.context_length`: Maximum context
-
-### Tensor Parsing
-
-Tensors are grouped by:
-- **Layer number**: Extracted from tensor names (`blk.0`, `layers.0`, etc.)
-- **Component type**: Attention, feed-forward, normalization, etc.
-
-### Visualization Mapping
-
-| Model Component | Topology Layer | Geometry | Rationale |
-|----------------|----------------|----------|-----------|
-| Token Embeddings | Conceptual | PCA projection | Semantic space |
-| Attention | Sphere | Uniform sphere | Hierarchical attention |
-| Feed-Forward | Hyperbolic | Poincaré disk | Tree-like expansion |
-| Output/LM Head | Conceptual | PCA projection | Vocabulary space |
-
-## Examples
-
-### Example 1: Visualize a 7B Model
-
-```bash
-# Download a GGUF model (example)
-wget https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/main/llama-2-7b.Q4_K_M.gguf
-
-# Visualize
-python examples/visualize_gguf.py llama-2-7b.Q4_K_M.gguf --verbose
-
-# Output: llama-2-7b.Q4_K_M_topology.html
-```
-
-### Example 2: Compare Different Models
-
-```bash
-# Visualize multiple models
-python examples/visualize_gguf.py model_a.gguf -o model_a.html
-python examples/visualize_gguf.py model_b.gguf -o model_b.html
-
-# Open both in browser to compare architectures
-```
-
-### Example 3: Programmatic Usage
+### Python API
 
 ```python
-from braintop.integrations.gguf_loader import GGUFLoader
-from braintop.utils.builders import TopologyBuilder
 from braintop.core.visualizer import TopologyVisualizer
+from braintop.integrations import GGUFLoader
 
-# Load GGUF file
 loader = GGUFLoader()
 loader.load_file("model.gguf")
 
-# Get topology data
-topology_data = loader.create_topology_data()
+print(loader.format_summary())
+loader.architecture        # {'type': 'llama', 'num_layers': ..., 'num_heads': ..., ...}
+loader.metadata            # every metadata key/value in the file
+loader.tensor_info         # name, dims, dtype, elements, block, component per tensor
+loader.get_layer_info()    # tensors and parameter counts grouped by block
 
-# Build and visualize
-builder = TopologyBuilder("my_model", "My Model")
-# ... (add layers from topology_data)
-
-visualizer = TopologyVisualizer(builder.build())
-visualizer.save("output.html")
+topology = loader.build_topology(max_blocks=None)
+visualizer = TopologyVisualizer(topology)
+visualizer.create_figure(color_by="layer", size_by="param_share")
+visualizer.save("model.html")
 ```
+
+`loader.get_embeddings()` raises `NotImplementedError`: the loader does not
+run the model. Use `LlamaCppAdapter` for embeddings from a GGUF model.
+
+## How tensors are classified
+
+Roles are inferred from tensor names, following the names llama.cpp writes:
+
+| Name pattern | Role |
+|---|---|
+| `blk.N.` prefix (also `layers.N.`, `h.N.`, `block.N.`) | belongs to block N |
+| contains `norm` | normalization |
+| contains `attn` or `attention` | attention |
+| contains `ffn`, `mlp` or `feed_forward` | feed-forward |
+| `token_embd`, `position_embd`, `token_types` (outside a block) | embedding |
+| `output.*`, `lm_head.*` (outside a block) | output |
+| anything else | other |
+
+Inside a block, the norm rule is applied first, so `blk.0.attn_norm.weight`
+is normalization and `blk.0.attn_output.weight` is attention. Tensors that
+match no rule are still drawn, under "other"; nothing is dropped.
+
+Architecture fields are read by exact key, `<architecture>.<field>`, for
+example `llama.attention.head_count` and `llama.attention.head_count_kv`.
+
+## Verification status
+
+- The parser is cross-checked in the test suite against the official `gguf`
+  Python reader (tensor names, dimensions and data offsets).
+- It was run against one real model, `stories260K.gguf` from
+  `ggml-org/models` (llama architecture, 5 blocks): tensor count, parameter
+  count and offsets matched the official reader.
+- Other architectures have not been tested. Models whose tensor names do not
+  follow the patterns above will parse correctly but show most tensors under
+  "other".
 
 ## Limitations
 
-### Current Limitations
+- GGUF versions 2 and 3, little-endian only. Version 1 and big-endian files
+  are rejected with `GGUFFormatError`.
+- Parameter counts are element counts from the tensor directory; they do not
+  account for quantization.
+- Each edge is a separate Plotly trace, so a model with hundreds of tensors
+  produces a heavy figure. Use `--max-blocks` for deep models.
+- Every HTML export embeds the Plotly library and is about 5 MB.
 
-1. **No Weight Visualization**: Only architecture is shown, not actual weight values
-2. **No Inference**: Cannot run the model, only visualize structure
-3. **Large Models**: Very large models (>100 layers) may produce crowded visualizations
-4. **Memory**: Loading very large GGUF files requires sufficient RAM
+## Reference
 
-### Future Enhancements
-
-- Weight distribution visualization
-- Attention pattern display
-- Layer activation visualization
-- Real-time inference integration
-- Support for model comparison views
-
-## Troubleshooting
-
-### File Not Found
-
-```
-Error: File not found: model.gguf
-```
-
-**Solution**: Check the file path is correct.
-
-### Invalid GGUF File
-
-```
-ValueError: Invalid GGUF file: magic number mismatch
-```
-
-**Solution**: Ensure the file is a valid GGUF file, not corrupted.
-
-### Memory Error
-
-```
-MemoryError: Unable to allocate array
-```
-
-**Solution**: For very large models, the loader only reads metadata, not weights. If you still get memory errors, increase system RAM or use a smaller model.
-
-### No Layers Detected
-
-```
-Identified 0 topology layers
-```
-
-**Solution**: The model may use an unsupported naming convention. Try verbose mode (`-v`) to see what tensors were found.
-
-## Integration with Solution Plan
-
-This GGUF visualization feature follows the same problem model and solution plan defined in:
-- `PROBLEM_MODEL.md`: Formal definition of entities, actions, and constraints
-- `SOLUTION_PLAN.md`: Step-by-step workflow for topology creation
-
-The GGUF loader extracts real model data instead of synthetic data, but follows the same visualization pipeline.
-
-## API Reference
-
-### GGUFLoader Class
-
-```python
-class GGUFLoader(BaseIntegration):
-    """Loader for GGUF model files."""
-
-    def load_file(file_path: str) -> bool:
-        """Load a GGUF file and extract metadata."""
-
-    def get_architecture_summary() -> Dict[str, Any]:
-        """Get model architecture summary."""
-
-    def get_layer_info() -> List[Dict[str, Any]]:
-        """Get layer-wise information."""
-
-    def create_topology_data() -> Dict[str, Any]:
-        """Create topology visualization data."""
-
-    def print_summary() -> None:
-        """Print model summary."""
-```
-
-### Visualization Functions
-
-```python
-def create_gguf_topology(gguf_file: str, verbose: bool = False) -> TopologyBuilder:
-    """Create a topology from a GGUF file."""
-
-def visualize_gguf(
-    gguf_file: str,
-    output_file: Optional[str] = None,
-    show_browser: bool = False,
-    verbose: bool = False
-) -> str:
-    """Create and save a visualization of a GGUF model."""
-```
-
-## Contributing
-
-Found a model that doesn't visualize correctly? Please open an issue with:
-- Model name and source
-- GGUF file metadata (from `--verbose` mode)
-- Expected vs actual layer detection
-
-## References
-
-- [GGUF Format Specification](https://github.com/ggerganov/llama.cpp/blob/master/docs/gguf.md)
-- [llama.cpp](https://github.com/ggerganov/llama.cpp)
-- [GGUF Models on Hugging Face](https://huggingface.co/models?library=gguf)
+- [GGUF format specification](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md)
