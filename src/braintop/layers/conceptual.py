@@ -11,8 +11,8 @@ class ConceptualLayer(BaseLayer):
     """Layer for representing conceptual relationships in semantic space.
 
     This layer visualizes concepts and their relationships in a 3D space,
-    using techniques like dimensionality reduction (PCA, t-SNE, UMAP) to
-    project high-dimensional semantic vectors into 3D space.
+    using PCA or an explicit random projection to map high-dimensional
+    vectors into three display coordinates.
     """
 
     def __init__(self, layer_id: str, name: str = "Conceptual Layer"):
