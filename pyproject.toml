@@ -1,20 +1,42 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "braintop"
 version = "0.1.0"
-description = "A beautiful rich 3D topology visualizer for LLMs"
+description = "Composable 3D topology visualization for embeddings, graphs, and geometric layers"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
+authors = [{name = "Jesús Vilela Jato"}]
+keywords = [
+    "topology",
+    "geometry",
+    "visualization",
+    "embeddings",
+    "graphs",
+    "riemannian-geometry",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "numpy>=1.20.0",
     "plotly>=5.0.0",
-    "dash>=2.0.0",
     "networkx>=2.5",
-    "scipy>=1.7.0",
     "pydantic>=2.0.0",
 ]
 
@@ -27,6 +49,17 @@ dev = [
     "mypy>=0.950",
 ]
 
+openai = ["openai>=1.0.0"]
+sentence-transformers = ["sentence-transformers>=2.0.0"]
+llama-cpp = ["llama-cpp-python>=0.2.0"]
+examples = ["scipy>=1.7.0"]
+static = ["plotly>=6.1.1", "kaleido>=1.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/jesusvilela/braintop"
+Repository = "https://github.com/jesusvilela/braintop"
+Issues = "https://github.com/jesusvilela/braintop/issues"
+
 [project.scripts]
 braintop = "braintop.cli:main"
 
@@ -35,7 +68,7 @@ where = ["src"]
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 
 [tool.mypy]
@@ -49,4 +82,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=braintop --cov-report=term-missing"
+addopts = "-v --cov=braintop --cov-report=term-missing --cov-fail-under=70"

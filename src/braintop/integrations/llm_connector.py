@@ -18,12 +18,12 @@ from braintop.integrations.base import BaseIntegration
 class LLMConnector(BaseIntegration):
     """Connector for integrating with Large Language Models.
 
-    This class provides a flexible interface to connect braintop to various
-    LLM providers (OpenAI, Anthropic, local models, etc.) and extract
-    embeddings, inference responses, attention patterns, and other
-    topology-relevant data. The production bridge intentionally avoids direct
-    vendor SDK imports; callers can pass provider clients or callables in
-    ``config`` while tests and examples use deterministic ``mock`` behavior.
+    This class provides a provider-neutral interface for embeddings, inference
+    responses, attention-like matrices, and topology-relevant relationships.
+    Packaged adapters support OpenAI-compatible clients, SentenceTransformers,
+    and llama.cpp. Vendor SDKs are imported lazily by their adapters; callers
+    may also inject prebuilt clients or callables. The deterministic ``mock``
+    provider is reserved for demos and tests.
     """
 
     def __init__(
@@ -35,8 +35,8 @@ class LLMConnector(BaseIntegration):
         """Initialize the LLM connector.
 
         Args:
-            provider: LLM provider name ('custom', 'openai', 'anthropic',
-                'huggingface', 'mock', etc.)
+            provider: 'mock', 'custom', 'openai', 'sentence-transformers',
+                'llama-cpp', or a caller-supplied generic client provider.
             model_name: Specific model to use
             config: Additional configuration
         """
@@ -46,28 +46,85 @@ class LLMConnector(BaseIntegration):
         self.client = None
 
     def connect(self) -> bool:
-        """Establish connection to the LLM provider.
+        """Connect an adapter or validate an injected provider client.
 
-        Returns:
-            True if connection successful
+        Non-mock providers never fall back to synthetic embeddings or inference.
+        A provider must expose the capability requested by the caller.
         """
-        self.client = self.config.get("client")
-        if self.provider == "custom" and self.client is None:
-            self.client = {
+        client = self.config.get("client")
+
+        if isinstance(client, (CallableAdapter, OpenAIAdapter, SentenceTransformerAdapter, LlamaCppAdapter)):
+            adapter = client
+        elif self.provider == "mock":
+            adapter = None
+        elif self.provider == "custom":
+            functions = {
                 "embedding_fn": self.config.get("embedding_fn"),
                 "inference_fn": self.config.get("inference_fn"),
                 "attention_fn": self.config.get("attention_fn"),
             }
+            if client is None:
+                if not any(callable(fn) for fn in functions.values()):
+                    raise ValueError(
+                        "The custom provider requires a client or at least one callable"
+                    )
+                adapter = CallableAdapter(
+                    embedding_fn=functions["embedding_fn"],
+                    inference_fn=functions["inference_fn"],
+                    attention_fn=functions["attention_fn"],
+                    model_name=self.model_name,
+                    config=self.config,
+                )
+            else:
+                adapter = client
+        elif self.provider == "openai":
+            adapter = OpenAIAdapter(
+                model_name=self.model_name,
+                client=client,
+                config=self.config,
+            )
+        elif self.provider in ("sentence-transformers", "sentence_transformers"):
+            adapter = SentenceTransformerAdapter(
+                model_name=self.model_name,
+                client=client,
+                config=self.config,
+            )
+        elif self.provider in ("llama-cpp", "llama_cpp", "llama.cpp"):
+            adapter = LlamaCppAdapter(
+                model_name=self.model_name,
+                client=client,
+                config=self.config,
+            )
+        else:
+            adapter = client
+            supported_methods = ("get_embeddings", "run_inference", "get_attention_weights")
+            if adapter is None or not any(
+                callable(getattr(adapter, method, None)) for method in supported_methods
+            ):
+                raise ValueError(
+                    f"Unsupported provider '{self.provider}'. Supply a client implementing "
+                    "get_embeddings, run_inference, or get_attention_weights."
+                )
 
-        # Vendor SDK construction is intentionally delegated to callers so the
-        # core package remains lightweight and import-safe in offline contexts.
+        connect_fn = getattr(adapter, "connect", None) if adapter is not None else None
+        if callable(connect_fn):
+            connected = connect_fn()
+            if connected is False:
+                raise ConnectionError(f"Provider '{self.provider}' did not connect")
+
+        self.client = adapter
         self.is_connected = True
         return True
 
     def disconnect(self) -> None:
-        """Close connection to the provider."""
-        self.client = None
-        self.is_connected = False
+        """Close the provider adapter and release its client reference."""
+        try:
+            disconnect_fn = getattr(self.client, "disconnect", None)
+            if callable(disconnect_fn):
+                disconnect_fn()
+        finally:
+            self.client = None
+            self.is_connected = False
 
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
         """Get normalized embeddings from the provider.
@@ -86,10 +143,14 @@ class LLMConnector(BaseIntegration):
 
         if embedding_fn is not None:
             raw_embeddings = embedding_fn(validated_texts)
-        elif self.client is not None and hasattr(self.client, "get_embeddings"):
+        elif self.client is not None and callable(getattr(self.client, "get_embeddings", None)):
             raw_embeddings = self.client.get_embeddings(validated_texts)
-        else:
+        elif self.provider == "mock":
             raw_embeddings = self._mock_embeddings(validated_texts)
+        else:
+            raise NotImplementedError(
+                f"Provider '{self.provider}' does not expose an embedding capability"
+            )
 
         embeddings = self._coerce_embedding_matrix(raw_embeddings, len(validated_texts))
         if self.config.get("normalize_embeddings", True):
@@ -119,10 +180,14 @@ class LLMConnector(BaseIntegration):
         inference_fn = self._get_callable("inference_fn")
         if inference_fn is not None:
             raw_response = inference_fn(prompt, context=context)
-        elif self.client is not None and hasattr(self.client, "run_inference"):
+        elif self.client is not None and callable(getattr(self.client, "run_inference", None)):
             raw_response = self.client.run_inference(prompt, context=context)
-        else:
+        elif self.provider == "mock":
             raw_response = self._mock_inference(prompt, context)
+        else:
+            raise NotImplementedError(
+                f"Provider '{self.provider}' does not expose an inference capability"
+            )
 
         return self._normalize_inference_response(raw_response, context)
 
@@ -132,16 +197,40 @@ class LLMConnector(BaseIntegration):
         Returns:
             Dictionary with model information
         """
-        return {
+        adapter_info: Dict[str, Any] = {}
+        info_fn = getattr(self.client, "get_model_info", None)
+        if callable(info_fn):
+            adapter_info = info_fn()
+
+        supports_inference = (
+            self.provider == "mock"
+            or self._supports_callable("inference_fn")
+            or callable(getattr(self.client, "run_inference", None))
+        )
+        supports_attention = (
+            self.provider == "mock"
+            or self._supports_callable("attention_fn")
+            or callable(getattr(self.client, "get_attention_weights", None))
+        )
+
+        info = {
             "provider": self.provider,
             "model_name": self.model_name,
             "is_connected": self.is_connected,
-            "embedding_dim": self.config.get("embedding_dim", 768),
-            "supports_inference": self._supports_callable("inference_fn")
-            or self.provider == "mock",
-            "supports_attention": self._supports_callable("attention_fn")
-            or self.provider == "mock",
+            "embedding_dim": self.config.get(
+                "embedding_dim", adapter_info.get("embedding_dim", 768)
+            ),
+            "supports_inference": supports_inference,
+            "supports_attention": supports_attention,
         }
+        info.update(adapter_info)
+        info.update({
+            "provider": self.provider,
+            "is_connected": self.is_connected,
+            "supports_inference": supports_inference,
+            "supports_attention": supports_attention,
+        })
+        return info
 
     def get_attention_weights(
         self,

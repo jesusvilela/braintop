@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from braintop.integrations import (
     CallableAdapter,
@@ -138,3 +139,37 @@ def test_llm_connector_auto_wraps_packaged_openai_adapter():
     assert inference["text"] == "BRIDGE"
     assert info["adapter"] == "openai"
     assert info["supports_inference"] is True
+
+
+
+def test_non_mock_provider_never_falls_back_to_mock_embeddings():
+    """A provider without embeddings must fail instead of returning synthetic vectors."""
+    connector = LLMConnector(
+        provider="custom",
+        config={"inference_fn": lambda prompt, context=None: prompt},
+    )
+    connector.connect()
+
+    with pytest.raises(NotImplementedError, match="embedding_fn configured"):
+        connector.get_embeddings(["real input"])
+
+
+def test_unsupported_provider_fails_closed_without_client():
+    """Unknown providers must not report a successful mock-backed connection."""
+    connector = LLMConnector(provider="anthropic")
+
+    with pytest.raises(ValueError, match="Unsupported provider"):
+        connector.connect()
+
+
+def test_embedding_only_adapter_does_not_fake_inference():
+    """An embedding-only adapter must not silently return mock inference text."""
+    connector = LLMConnector(
+        provider="sentence-transformers",
+        model_name="test-encoder",
+        config={"client": FakeSentenceTransformer()},
+    )
+    connector.connect()
+
+    with pytest.raises(NotImplementedError, match="inference capability"):
+        connector.run_inference("This should not be synthesized")

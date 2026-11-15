@@ -1,4 +1,4 @@
-"""3D Topology visualizer using Plotly and Dash."""
+"""Interactive 3D topology visualizer using Plotly."""
 
 from typing import Optional, Dict, Any, List, Iterable, Union
 import numpy as np
@@ -39,6 +39,15 @@ class TopologyVisualizer:
         Returns:
             A Plotly Figure object with the 3D visualization
         """
+        valid_color_modes = {
+            "layer", "degree", "betweenness", "closeness", "salience", "normalized_radius"
+        }
+        valid_size_modes = {"degree", "betweenness", "closeness", "salience", "normalized_radius"}
+        if color_by not in valid_color_modes:
+            raise ValueError(f"Unsupported color_by metric '{color_by}'")
+        if size_by not in valid_size_modes:
+            raise ValueError(f"Unsupported size_by metric '{size_by}'")
+
         fig = go.Figure()
 
         layers_to_plot = [
@@ -64,6 +73,7 @@ class TopologyVisualizer:
                 color_by=color_by,
                 size_by=size_by,
                 layer_color=self._layer_color(idx),
+                show_color_scale=(idx == 0),
             )
 
         # Add inter-layer edges
@@ -100,6 +110,7 @@ class TopologyVisualizer:
         color_by: str,
         size_by: str,
         layer_color: str,
+        show_color_scale: bool = True,
     ) -> None:
         """Add nodes from a layer to the figure.
         
@@ -137,7 +148,12 @@ class TopologyVisualizer:
             scale=1.0,
         )
         marker_color_kwargs = (
-            dict(color=marker_colors, colorscale="Viridis", showscale=True)
+            dict(
+                color=marker_colors,
+                colorscale="Viridis",
+                showscale=show_color_scale,
+                colorbar=dict(title=color_by),
+            )
             if isinstance(marker_colors, list)
             else dict(color=marker_colors)
         )
@@ -148,7 +164,7 @@ class TopologyVisualizer:
             y=y_coords,
             z=z_coords,
             mode='markers+text',
-            name=f"{layer.name} ({layer.layer_type})",
+            name=layer.name,
             marker=dict(
                 size=marker_sizes,
                 opacity=0.85,
@@ -285,6 +301,10 @@ class TopologyVisualizer:
         nodes = self.topology.get_all_nodes()
         if not nodes:
             return go.Figure()
+        if axis not in ("x", "y", "z"):
+            raise ValueError("axis must be one of 'x', 'y', or 'z'")
+        if not isinstance(sections, int) or sections < 1:
+            raise ValueError("sections must be a positive integer")
 
         axis_index = {"x": 0, "y": 1, "z": 2}[axis]
         axis_pairs = {
@@ -383,9 +403,17 @@ class TopologyVisualizer:
         """
         G = nx.Graph()
         
-        # Add nodes
+        # Add nodes with their structural fields as well as user metadata.
         for node in self.topology.get_all_nodes():
-            G.add_node(node.id, **node.metadata)
+            attributes = dict(node.metadata)
+            attributes.update(
+                {
+                    "label": node.label,
+                    "position": node.position,
+                    "layer_id": node.layer_id,
+                }
+            )
+            G.add_node(node.id, **attributes)
         
         # Add edges
         for edge in self.topology.get_all_edges():

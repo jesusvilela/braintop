@@ -6,6 +6,8 @@
 
 *Place a structure. Choose a geometry. Turn it slowly. See what becomes visible.*
 
+[![CI](https://github.com/jesusvilela/braintop/actions/workflows/ci.yml/badge.svg)](https://github.com/jesusvilela/braintop/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jesusvilela/braintop/actions/workflows/codeql.yml/badge.svg)](https://github.com/jesusvilela/braintop/actions/workflows/codeql.yml)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-8A9A5B.svg)](LICENSE)
 
@@ -59,7 +61,7 @@ A layer is a choice of representation, not a claim that every kind of data natur
 
 | Layer | What it does | Current representation |
 |---|---|---|
-| **Conceptual** | Places labels and supplied high-dimensional vectors in a shared view | Centred SVD/PCA projection to three coordinates; random projection is the fallback |
+| **Conceptual** | Places labels and supplied high-dimensional vectors in a shared view | Centred SVD/PCA projection by default, with random projection as an explicit alternative |
 | **Sphere** | Samples points on a positively curved surface | Spherical coordinates mapped to 3D Cartesian coordinates |
 | **Torus** | Gives periodic structure a place to live | Toroidal coordinates with configurable major and minor radii |
 | **Hyperbolic** | Explores negatively curved, tree-friendly geometry | Finite geodesic disk in the Poincaré disk model, with a depth coordinate for display |
@@ -84,7 +86,16 @@ The connector provides a small, provider-neutral contract:
 - normalized inference responses;
 - optional attention-like matrices, validated as square, finite, non-negative and row-stochastic;
 - deterministic mock behaviour for offline examples and tests;
-- caller-supplied functions or client objects for external systems.
+- packaged adapters for OpenAI-compatible clients, SentenceTransformers and llama.cpp;
+- caller-supplied functions or client objects for other systems.
+
+Install only the adapter you intend to use:
+
+```bash
+pip install -e ".[openai]"
+pip install -e ".[sentence-transformers]"
+pip install -e ".[llama-cpp]"
+```
 
 The mock provider is intentionally modest: it builds deterministic hash-based vectors from tokens and adjacent token pairs. It is useful for exercising the pipeline without credentials or network access. It is **not** a language model and should not be mistaken for semantic model embeddings.
 
@@ -224,7 +235,18 @@ The Plotly visualizer can:
 - create coordinate-based sectional studies along the x, y or z axis;
 - generate ablation views with edges removed, individual layers isolated, or a layer omitted;
 - export the topology as a NetworkX graph for further analysis;
-- save interactive HTML, or use Plotly's image export for static formats.
+- save interactive HTML; static PNG export is available through the optional `static` extra.
+
+To generate two deterministic showcase views from Braintop's own topology and visualizer
+APIs — a geometry atlas and a synthetic semantic topology — run:
+
+```bash
+pip install -e ".[static]"
+python examples/showcase.py --output-dir build/showcase --require-static
+```
+
+The HTML files are interactive; the PNG files are convenient for documentation and papers.
+The semantic example uses synthetic vectors, not embeddings from a trained model.
 
 The command line is intentionally small:
 
@@ -283,6 +305,9 @@ Further reading:
 - [Quick start](docs/QUICKSTART.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Inference bridge contract](docs/LLM_INFERENCE_BRIDGE_SPEC.md)
+- [Changelog](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- [Citation metadata](CITATION.cff)
 - [Contributing](CONTRIBUTING.md)
 
 ## development

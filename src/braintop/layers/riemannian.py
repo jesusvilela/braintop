@@ -110,8 +110,10 @@ class RiemannianLayer(BaseLayer):
         elif manifold_type == "hyperbolic":
             return self._hyperbolic_embedding(data)
         else:
-            # Default to sphere
-            return self._sphere_embedding(data)
+            raise ValueError(
+                f"Unsupported manifold type '{manifold_type}'. "
+                "Use 'sphere', 'torus', or 'hyperbolic'."
+            )
 
     @staticmethod
     def _validate_parameter_array(
@@ -174,8 +176,10 @@ class RiemannianLayer(BaseLayer):
             return np.column_stack([rho, theta])
 
         else:
-            # Default to 2D parameters
-            return np.random.random((num_nodes, 2))
+            raise ValueError(
+                f"Unsupported manifold type '{manifold_type}'. "
+                "Use 'sphere', 'torus', or 'hyperbolic'."
+            )
 
     def _sphere_embedding(self, params: np.ndarray) -> List[Tuple[float, float, float]]:
         """Embed points on a sphere.

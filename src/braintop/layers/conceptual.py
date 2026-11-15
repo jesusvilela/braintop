@@ -11,8 +11,8 @@ class ConceptualLayer(BaseLayer):
     """Layer for representing conceptual relationships in semantic space.
 
     This layer visualizes concepts and their relationships in a 3D space,
-    using techniques like dimensionality reduction (PCA, t-SNE, UMAP) to
-    project high-dimensional semantic vectors into 3D space.
+    using PCA or an explicit random projection to map high-dimensional
+    vectors into three display coordinates.
     """
 
     def __init__(self, layer_id: str, name: str = "Conceptual Layer"):
@@ -103,11 +103,13 @@ class ConceptualLayer(BaseLayer):
             raise ValueError("spacing_factor must be finite")
 
         if method == "pca":
-            # Simple PCA projection
             positions = self._pca_projection(data)
-        else:
-            # Random projection as fallback
+        elif method == "random":
             positions = self._random_projection(data)
+        else:
+            raise ValueError(
+                f"Unsupported projection method '{method}'. Use 'pca' or 'random'."
+            )
 
         # Apply spacing factor
         positions = [(x * spacing, y * spacing, z * spacing) for x, y, z in positions]

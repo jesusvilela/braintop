@@ -96,3 +96,23 @@ def test_builder_chaining():
     assert len(topology.layers) == 2
     assert len(topology.inter_layer_edges) > 0
     assert topology.metadata["version"] == "1.0"
+
+
+def test_builder_rejects_unknown_connection_type():
+    """Unknown connection strategies must not silently create an empty edge set."""
+    builder = TopologyBuilder("invalid_connection", "Invalid connection")
+    builder.add_conceptual_layer("source", num_nodes=2)
+    builder.add_riemannian_layer("target", num_nodes=2, manifold_type="sphere")
+
+    with pytest.raises(ValueError, match="Unsupported connection type"):
+        builder.connect_layers("source", "target", "nearest-ish")
+
+
+def test_builder_rejects_negative_connection_count():
+    """Nearest/random connection counts cannot be negative."""
+    builder = TopologyBuilder("negative_connection", "Negative connection")
+    builder.add_conceptual_layer("source", num_nodes=2)
+    builder.add_riemannian_layer("target", num_nodes=2, manifold_type="sphere")
+
+    with pytest.raises(ValueError, match="non-negative"):
+        builder.connect_layers("source", "target", "nearest", num_connections=-1)

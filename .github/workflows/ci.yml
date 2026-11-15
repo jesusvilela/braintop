@@ -5,12 +5,24 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.11']
+        include:
+          - python-version: '3.8'
+            os: ubuntu-22.04
+          - python-version: '3.10'
+            os: ubuntu-latest
+          - python-version: '3.11'
+            os: ubuntu-latest
+          - python-version: '3.12'
+            os: ubuntu-latest
 
     steps:
       - name: Check out repository
@@ -28,10 +40,43 @@ jobs:
           python -m pip install -e .
 
       - name: Compile Python sources
-        run: python -m compileall -q src tests
+        run: python -m compileall -q src tests examples
 
       - name: Import smoke test
         run: python -c "import braintop; print(braintop.__version__)"
 
+      - name: Build distributions
+        run: python -m build
+
+      - name: Validate distributions
+        run: python -m twine check dist/*
+
       - name: Run tests
         run: pytest -q
+
+  showcase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install showcase dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[static]"
+
+      - name: Generate Braintop showcase views
+        run: python examples/showcase.py --output-dir build/showcase --require-static
+
+      - name: Upload showcase views
+        uses: actions/upload-artifact@v4
+        with:
+          name: braintop-showcase
+          path: build/showcase/
+          if-no-files-found: error
+          retention-days: 14
