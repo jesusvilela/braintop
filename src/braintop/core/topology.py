@@ -6,6 +6,8 @@ from enum import Enum
 import numpy as np
 from pydantic import BaseModel, Field
 
+from braintop.core.frames import RigidFrame3D, Matrix3, Vector3
+
 
 class LayerType(str, Enum):
     """Types of topology layers."""
@@ -41,6 +43,7 @@ class LayerModel(BaseModel):
     layer_type: LayerType = Field(..., description="Type of layer")
     nodes: List[NodeModel] = Field(default_factory=list, description="Nodes in this layer")
     config: Dict[str, Any] = Field(default_factory=dict, description="Layer-specific configuration")
+    frame: RigidFrame3D = Field(default_factory=RigidFrame3D, description="Local-to-world display-coordinate frame")
 
 
 @dataclass
@@ -55,6 +58,7 @@ class Topology:
     name: str
     layers: List[LayerModel] = field(default_factory=list)
     inter_layer_edges: List[EdgeModel] = field(default_factory=list)
+    intra_layer_edges: List[EdgeModel] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def add_layer(self, layer: LayerModel) -> None:
@@ -62,8 +66,42 @@ class Topology:
         self.layers.append(layer)
     
     def add_inter_layer_edge(self, edge: EdgeModel) -> None:
-        """Add an edge connecting nodes across different layers."""
+        """Add a cross-layer relation (legacy callers may add same-layer edges)."""
         self.inter_layer_edges.append(edge)
+
+    def add_intra_layer_edge(self, edge: EdgeModel) -> None:
+        """Add a relation whose endpoints belong to the same layer."""
+        self.intra_layer_edges.append(edge)
+
+    def world_position(self, node: NodeModel) -> Vector3:
+        """Ambient 3D position using the node's validated layer frame."""
+        layer = self.get_layer(node.layer_id)
+        if layer is None:
+            raise ValueError(f"Unknown layer for node {node.id}: {node.layer_id}")
+        return layer.frame.to_world(node.position)
+
+    def reexpress_layer(
+        self, layer_id: str, rotation: Matrix3, translation: Vector3
+    ) -> None:
+        """Perform a *passive* change of local coordinates y=Qx+s.
+
+        Neither world positions nor stored graph edges change. To physically
+        move a layer instead, update layer.frame (and rebuild nearest edges
+        if the application needs neighbours recomputed).
+        """
+        layer = self.get_layer(layer_id)
+        if layer is None:
+            raise ValueError(f"Unknown layer: {layer_id}")
+        frame = layer.frame.reparameterized(rotation, translation)
+        q = np.asarray(rotation, dtype=float)
+        s = np.asarray(translation, dtype=float)
+        new_positions = [
+            tuple(float(v) for v in q @ np.asarray(node.position) + s)
+            for node in layer.nodes
+        ]
+        for node, position in zip(layer.nodes, new_positions):
+            node.position = position
+        layer.frame = frame
     
     def get_layer(self, layer_id: str) -> Optional[LayerModel]:
         """Get a layer by its ID."""
@@ -81,17 +119,19 @@ class Topology:
     
     def get_all_edges(self) -> List[EdgeModel]:
         """Get all edges including inter-layer edges."""
-        return self.inter_layer_edges.copy()
+        return self.inter_layer_edges.copy() + self.intra_layer_edges.copy()
     
     def compute_statistics(self) -> Dict[str, Any]:
         """Compute topology statistics."""
         total_nodes = sum(len(layer.nodes) for layer in self.layers)
-        total_edges = len(self.inter_layer_edges)
+        total_edges = len(self.get_all_edges())
         
         return {
             "num_layers": len(self.layers),
             "total_nodes": total_nodes,
             "total_edges": total_edges,
+            "inter_layer_edges": len(self.inter_layer_edges),
+            "intra_layer_edges": len(self.intra_layer_edges),
             "layer_types": [layer.layer_type for layer in self.layers],
         }
 
@@ -101,7 +141,7 @@ class Topology:
             node.id: node.layer_id for layer in self.layers for node in layer.nodes
         }
         edge_counts: Dict[str, int] = {layer.id: 0 for layer in self.layers}
-        for edge in self.inter_layer_edges:
+        for edge in self.get_all_edges():
             for node_id in (edge.source, edge.target):
                 layer_id = node_layer_map.get(node_id)
                 if layer_id:
