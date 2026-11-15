@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 
 from braintop.core.topology import Topology, LayerModel, EdgeModel
+from braintop.core.frames import RigidFrame3D, Matrix3, Vector3
 from braintop.layers.conceptual import ConceptualLayer
 from braintop.layers.riemannian import RiemannianLayer
 from braintop.integrations.llm_connector import LLMConnector
@@ -138,11 +139,33 @@ class TopologyBuilder:
                 target=target_id,
                 weight=edge_data["weight"]
             )
-            self.topology.add_inter_layer_edge(edge)
+            self.topology.add_intra_layer_edge(edge)
             self._edge_counter += 1
-        
+
         return self
-    
+
+    def set_layer_frame(
+        self, layer_id: str, rotation: Matrix3 = ((1., 0., 0.), (0., 1., 0.), (0., 0., 1.)),
+        translation: Vector3 = (0., 0., 0.)
+    ) -> "TopologyBuilder":
+        """Set physical layer placement in a shared ambient 3D display frame.
+
+        Does not infer intrinsic manifold correspondence. Call before
+        connect_layers; existing edges are a snapshot and are not recomputed.
+        """
+        layer = self.topology.get_layer(layer_id)
+        if layer is None:
+            raise ValueError(f"Unknown layer: {layer_id}")
+        layer.frame = RigidFrame3D(rotation=rotation, translation=translation)
+        return self
+
+    def reexpress_layer(
+        self, layer_id: str, rotation: Matrix3, translation: Vector3
+    ) -> "TopologyBuilder":
+        """Passive coordinate change, preserving world positions and edges."""
+        self.topology.reexpress_layer(layer_id, rotation, translation)
+        return self
+
     def connect_layers(
         self,
         source_layer_id: str,
@@ -190,25 +213,26 @@ class TopologyBuilder:
         target_layer: LayerModel,
         k: int
     ) -> None:
-        """Connect each source node to k nearest target nodes."""
+        """Connect by ambient Euclidean world coordinates, NOT manifold geodesics."""
         for source_node in source_layer.nodes:
             # Compute distances to all target nodes
             distances = []
             for target_node in target_layer.nodes:
                 dist = self._euclidean_distance(
-                    source_node.position,
-                    target_node.position
+                    self.topology.world_position(source_node),
+                    self.topology.world_position(target_node)
                 )
                 distances.append((dist, target_node))
             
             # Sort by distance and connect to k nearest
-            distances.sort(key=lambda x: x[0])
+            distances.sort(key=lambda x: (x[0], x[1].id))
             for dist, target_node in distances[:k]:
                 edge = EdgeModel(
                     id=f"edge_{self._edge_counter}",
                     source=source_node.id,
                     target=target_node.id,
-                    weight=1.0 / (1.0 + dist)  # Inverse distance weight
+                    weight=1.0 / (1.0 + dist),  # Inverse AMBIENT distance
+                    metadata={"metric": "ambient_euclidean_3d", "distance": float(dist)},
                 )
                 self.topology.add_inter_layer_edge(edge)
                 self._edge_counter += 1
