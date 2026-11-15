@@ -58,8 +58,8 @@ class Topology:
     name: str
     layers: List[LayerModel] = field(default_factory=list)
     inter_layer_edges: List[EdgeModel] = field(default_factory=list)
-    intra_layer_edges: List[EdgeModel] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    intra_layer_edges: List[EdgeModel] = field(default_factory=list)
     
     def add_layer(self, layer: LayerModel) -> None:
         """Add a layer, rejecting ambiguous layer and node identifiers."""
