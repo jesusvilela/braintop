@@ -64,6 +64,7 @@ class TopologyVisualizer:
                 color_by=color_by,
                 size_by=size_by,
                 layer_color=self._layer_color(idx),
+                show_color_scale=(idx == 0),
             )
 
         # Add inter-layer edges
@@ -100,6 +101,7 @@ class TopologyVisualizer:
         color_by: str,
         size_by: str,
         layer_color: str,
+        show_color_scale: bool = True,
     ) -> None:
         """Add nodes from a layer to the figure.
         
@@ -137,7 +139,12 @@ class TopologyVisualizer:
             scale=1.0,
         )
         marker_color_kwargs = (
-            dict(color=marker_colors, colorscale="Viridis", showscale=True)
+            dict(
+                color=marker_colors,
+                colorscale="Viridis",
+                showscale=show_color_scale,
+                colorbar=dict(title=color_by),
+            )
             if isinstance(marker_colors, list)
             else dict(color=marker_colors)
         )
@@ -148,7 +155,7 @@ class TopologyVisualizer:
             y=y_coords,
             z=z_coords,
             mode='markers+text',
-            name=f"{layer.name} ({layer.layer_type})",
+            name=layer.name,
             marker=dict(
                 size=marker_sizes,
                 opacity=0.85,
@@ -383,9 +390,17 @@ class TopologyVisualizer:
         """
         G = nx.Graph()
         
-        # Add nodes
+        # Add nodes with their structural fields as well as user metadata.
         for node in self.topology.get_all_nodes():
-            G.add_node(node.id, **node.metadata)
+            attributes = dict(node.metadata)
+            attributes.update(
+                {
+                    "label": node.label,
+                    "position": node.position,
+                    "layer_id": node.layer_id,
+                }
+            )
+            G.add_node(node.id, **attributes)
         
         # Add edges
         for edge in self.topology.get_all_edges():
