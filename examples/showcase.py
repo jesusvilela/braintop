@@ -154,7 +154,7 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
         concepts=concepts,
         embeddings=embeddings,
         projection_method="pca",
-        spacing_factor=1.35,
+        spacing_factor=1.65,
     )
     builder.add_riemannian_layer(
         "geometric_scaffold",
@@ -175,6 +175,15 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
             for node in layer.nodes:
                 node.label = ""
 
+    short_labels = [
+        "attn", "ctx", "tok", "seq", "dec",
+        "emb", "vec", "latent", "repr", "sim",
+        "train", "grad", "opt", "loss", "infer",
+    ]
+    for node, short_label in zip(topology.get_layer("concepts").nodes, short_labels):
+        # The full concept remains in node.metadata["concept"] for hover inspection.
+        node.label = short_label
+
     visualizer = TopologyVisualizer(topology)
     figure = visualizer.create_figure(
         color_by="betweenness",
@@ -190,16 +199,13 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
         height=1200,
         scene=dict(
             aspectmode="cube",
-            camera=dict(
-                eye=dict(x=0.95, y=1.1, z=0.8),
-                projection=dict(type="orthographic"),
-            ),
+            camera=dict(eye=dict(x=0.82, y=0.95, z=0.72)),
         ),
     )
     concept_trace = next(
         trace for trace in figure.data if trace.name == "Concept vectors · PCA view"
     )
-    concept_trace.textfont = dict(size=10, color="#f4f6fb")
+    concept_trace.textfont = dict(size=9, color="#f4f6fb")
     concept_trace.textposition = [
         "top left", "bottom right", "top center", "bottom left", "top right",
         "bottom center", "top left", "bottom right", "top center", "bottom left",
