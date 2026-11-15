@@ -172,14 +172,29 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
 
     layer = topology.get_layer("concepts")
     layer.name = "Concept network · PCA view"
-    short_labels = [
-        "attn", "ctx", "tok", "seq", "dec",
-        "emb", "vec", "latent", "repr", "sim",
-        "train", "grad", "opt", "loss", "infer",
+    group_names = [
+        "ATTENTION / SEQUENCE",
+        "REPRESENTATION",
+        "OPTIMIZATION / INFERENCE",
     ]
-    for node, short_label in zip(layer.nodes, short_labels):
-        # The full concept remains in node.metadata["concept"] for hover inspection.
-        node.label = short_label
+    positions = np.asarray([node.position for node in layer.nodes], dtype=float)
+    annotations = []
+    for group_index, group_name in enumerate(group_names):
+        centre = positions[group_index * 5 : (group_index + 1) * 5].mean(axis=0)
+        annotations.append(
+            dict(
+                x=float(centre[0]),
+                y=float(centre[1]),
+                z=float(centre[2] + 0.55),
+                text=group_name,
+                showarrow=False,
+                font=dict(size=12, color="#f4f6fb"),
+            )
+        )
+
+    # Keep the static composition uncluttered; full concept names remain in hover metadata.
+    for node in layer.nodes:
+        node.label = ""
 
     visualizer = TopologyVisualizer(topology)
     figure = visualizer.create_figure(
@@ -195,19 +210,11 @@ def semantic_topology(output_dir: Path, require_static: bool) -> None:
         width=1800,
         height=1200,
         scene=dict(
-            aspectmode="data",
-            camera=dict(eye=dict(x=1.2, y=1.3, z=1.05)),
+            aspectmode="cube",
+            camera=dict(eye=dict(x=0.85, y=0.95, z=0.75)),
+            annotations=annotations,
         ),
     )
-    concept_trace = next(
-        trace for trace in figure.data if trace.name == "Concept network · PCA view"
-    )
-    concept_trace.textfont = dict(size=10, color="#f4f6fb")
-    concept_trace.textposition = [
-        "top left", "bottom right", "top center", "bottom left", "top right",
-        "bottom center", "top left", "bottom right", "top center", "bottom left",
-        "top right", "bottom center", "top left", "bottom right", "top center",
-    ]
     _save(figure, output_dir, "semantic-topology", require_static)
 
 def _save(figure: Any, output_dir: Path, stem: str, require_static: bool) -> None:
