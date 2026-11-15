@@ -1,6 +1,6 @@
 """Core topology data structures and models."""
 
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
 import numpy as np
@@ -60,32 +60,51 @@ class Topology:
     inter_layer_edges: List[EdgeModel] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     intra_layer_edges: List[EdgeModel] = field(default_factory=list)
-    
+    _node_layers: Dict[str, str] = field(default_factory=dict, init=False, repr=False)
+    _edge_ids: Set[str] = field(default_factory=set, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Build fast indices for edge insertion; no change to public constructor."""
+        self._rebuild_indices()
+
+    def _rebuild_indices(self) -> None:
+        node_layers = {
+            node.id: node.layer_id for layer in self.layers for node in layer.nodes
+        }
+        edge_ids = {
+            edge.id for edge in self.inter_layer_edges + self.intra_layer_edges
+        }
+        if len(node_layers) != sum(len(layer.nodes) for layer in self.layers):
+            raise ValueError("Node IDs must be unique across the whole topology")
+        if len(edge_ids) != len(self.inter_layer_edges) + len(self.intra_layer_edges):
+            raise ValueError("Duplicate edge IDs in topology")
+        self._node_layers = node_layers
+        self._edge_ids = edge_ids
+
     def add_layer(self, layer: LayerModel) -> None:
         """Add a layer, rejecting ambiguous layer and node identifiers."""
         if self.get_layer(layer.id) is not None:
             raise ValueError(f"Duplicate layer ID: {layer.id}")
-        existing = {node.id for node in self.get_all_nodes()}
+        existing = set(self._node_layers)
         incoming = [node.id for node in layer.nodes]
         if len(incoming) != len(set(incoming)) or existing.intersection(incoming):
             raise ValueError("Node IDs must be unique across the whole topology")
         if any(node.layer_id != layer.id for node in layer.nodes):
             raise ValueError("Each node's layer_id must match its containing layer")
         self.layers.append(layer)
+        self._node_layers.update({node.id: node.layer_id for node in layer.nodes})
 
     def _edge_endpoint_layers(self, edge: EdgeModel) -> Tuple[str, str]:
-        node_to_layer = {
-            node.id: node.layer_id for node in self.get_all_nodes()
-        }
-        if edge.source not in node_to_layer or edge.target not in node_to_layer:
+        if edge.source not in self._node_layers or edge.target not in self._node_layers:
+            # Recover from callers mutating the public layer.nodes list directly.
+            self._rebuild_indices()
+        if edge.source not in self._node_layers or edge.target not in self._node_layers:
             raise ValueError(
                 f"Edge endpoints must refer to existing nodes: {edge.source}, {edge.target}"
             )
-        if any(
-            existing_edge.id == edge.id for existing_edge in self.get_all_edges()
-        ):
+        if edge.id in self._edge_ids:
             raise ValueError(f"Duplicate edge ID: {edge.id}")
-        return node_to_layer[edge.source], node_to_layer[edge.target]
+        return self._node_layers[edge.source], self._node_layers[edge.target]
 
     def add_inter_layer_edge(self, edge: EdgeModel) -> None:
         """Add an edge joining nodes in *different* layers."""
@@ -93,6 +112,7 @@ class Topology:
         if source_layer == target_layer:
             raise ValueError("Inter-layer edge must connect distinct layers")
         self.inter_layer_edges.append(edge)
+        self._edge_ids.add(edge.id)
 
     def add_intra_layer_edge(self, edge: EdgeModel) -> None:
         """Add an edge joining nodes in the *same* layer."""
@@ -100,6 +120,7 @@ class Topology:
         if source_layer != target_layer:
             raise ValueError("Intra-layer edge endpoints must share a layer")
         self.intra_layer_edges.append(edge)
+        self._edge_ids.add(edge.id)
 
     def world_position(self, node: NodeModel) -> Vector3:
         """Ambient 3D position using the node's validated layer frame."""
