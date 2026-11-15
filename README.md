@@ -75,6 +75,13 @@ A few implementation details matter:
 
 The point is not to flatten every geometry into a single story. It is to let different structures sit beside one another, while keeping their construction visible.
 
+**Moving-frame experiment.** Every layer now carries an explicit rigid local-to-world
+display frame. A passive change of the layer's local coordinates preserves its world
+position and nearest-neighbour correspondence; physically moving just one layer can
+change those neighbours. The built-in `nearest` rule compares **ambient 3D display
+coordinates**, not intrinsic manifold distances. See the [moving-frame contract,
+controls, and limitations](docs/MOVING_FRAMES.md).
+
 ## from vectors to relations
 
 Braintop can work with embeddings that you already have, or receive them through the LLM connector.
@@ -305,6 +312,7 @@ Further reading:
 - [Quick start](docs/QUICKSTART.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Inference bridge contract](docs/LLM_INFERENCE_BRIDGE_SPEC.md)
+- [Moving-frame consistency and graph semantics](docs/MOVING_FRAMES.md)
 - [Changelog](CHANGELOG.md)
 - [Security policy](SECURITY.md)
 - [Citation metadata](CITATION.cff)

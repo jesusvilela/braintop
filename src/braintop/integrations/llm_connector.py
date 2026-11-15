@@ -192,45 +192,50 @@ class LLMConnector(BaseIntegration):
         return self._normalize_inference_response(raw_response, context)
 
     def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the connected model.
+        """Report declared adapter capabilities; never infer them from method names.
 
-        Returns:
-            Dictionary with model information
+        Some adapters provide stub methods that intentionally raise when
+        their underlying optional capability is not configured.
         """
         adapter_info: Dict[str, Any] = {}
         info_fn = getattr(self.client, "get_model_info", None)
         if callable(info_fn):
-            adapter_info = info_fn()
+            adapter_info = dict(info_fn())
 
-        supports_inference = (
-            self.provider == "mock"
-            or self._supports_callable("inference_fn")
-            or callable(getattr(self.client, "run_inference", None))
-        )
-        supports_attention = (
-            self.provider == "mock"
-            or self._supports_callable("attention_fn")
-            or callable(getattr(self.client, "get_attention_weights", None))
-        )
+        capabilities = {
+            "supports_embeddings": (
+                self.provider == "mock"
+                or self._supports_callable("embedding_fn")
+                or callable(getattr(self.client, "get_embeddings", None))
+            ),
+            "supports_inference": (
+                self.provider == "mock"
+                or self._supports_callable("inference_fn")
+                or callable(getattr(self.client, "run_inference", None))
+            ),
+            "supports_attention": (
+                self.provider == "mock"
+                or self._supports_callable("attention_fn")
+                or callable(getattr(self.client, "get_attention_weights", None))
+            ),
+        }
+        for name in capabilities:
+            if name in adapter_info:
+                capabilities[name] = bool(adapter_info[name])
 
-        info = {
+        result = {
+            **adapter_info,
             "provider": self.provider,
             "model_name": self.model_name,
             "is_connected": self.is_connected,
             "embedding_dim": self.config.get(
-                "embedding_dim", adapter_info.get("embedding_dim", 768)
+                "embedding_dim", adapter_info.get(
+                    "embedding_dim", 768 if self.provider == "mock" else None
+                )
             ),
-            "supports_inference": supports_inference,
-            "supports_attention": supports_attention,
         }
-        info.update(adapter_info)
-        info.update({
-            "provider": self.provider,
-            "is_connected": self.is_connected,
-            "supports_inference": supports_inference,
-            "supports_attention": supports_attention,
-        })
-        return info
+        result.update(capabilities)
+        return result
 
     def get_attention_weights(
         self,
@@ -259,7 +264,9 @@ class LLMConnector(BaseIntegration):
         elif self.provider == "mock":
             raw_attention = self._mock_attention(text)
         else:
-            return None
+            raise NotImplementedError(
+                f"Provider '{self.provider}' does not expose an attention capability"
+            )
 
         return self._validate_attention_matrix(raw_attention)
 
