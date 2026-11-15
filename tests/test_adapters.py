@@ -150,7 +150,7 @@ def test_non_mock_provider_never_falls_back_to_mock_embeddings():
     )
     connector.connect()
 
-    with pytest.raises(NotImplementedError, match="embedding capability"):
+    with pytest.raises(NotImplementedError, match="embedding_fn configured"):
         connector.get_embeddings(["real input"])
 
 
