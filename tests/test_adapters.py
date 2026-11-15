@@ -173,3 +173,39 @@ def test_embedding_only_adapter_does_not_fake_inference():
 
     with pytest.raises(NotImplementedError, match="inference capability"):
         connector.run_inference("This should not be synthesized")
+
+
+def test_embedding_only_callable_reports_its_actual_capabilities():
+    """Do not confuse stub adapter methods with operational capabilities."""
+    connector = LLMConnector(
+        provider="custom",
+        model_name="embedding-only",
+        config={"embedding_fn": lambda texts: np.ones((len(texts), 3))},
+    )
+    connector.connect()
+    info = connector.get_model_info()
+
+    assert info["supports_embeddings"] is True
+    assert info["supports_inference"] is False
+    assert info["supports_attention"] is False
+    assert info["embedding_dim"] is None
+
+    with pytest.raises(NotImplementedError, match="inference_fn"):
+        connector.run_inference("not configured")
+    with pytest.raises(NotImplementedError, match="attention_fn"):
+        connector.get_attention_weights("not configured")
+
+
+def test_embedding_only_sentence_transformer_does_not_claim_attention():
+    connector = LLMConnector(
+        provider="sentence-transformers",
+        model_name="tiny",
+        config={"client": FakeSentenceTransformer()},
+    )
+    connector.connect()
+    info = connector.get_model_info()
+    assert info["supports_embeddings"] is True
+    assert info["supports_inference"] is False
+    assert info["supports_attention"] is False
+    with pytest.raises(NotImplementedError, match="attention capability"):
+        connector.get_attention_weights("hello there")
