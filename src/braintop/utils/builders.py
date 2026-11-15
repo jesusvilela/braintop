@@ -167,11 +167,19 @@ class TopologyBuilder:
         if not source_layer or not target_layer:
             raise ValueError("Invalid layer IDs")
         
+        if connection_type not in ("nearest", "random", "all"):
+            raise ValueError(
+                f"Unsupported connection type '{connection_type}'. "
+                "Use 'nearest', 'random', or 'all'."
+            )
+        if connection_type != "all" and num_connections < 0:
+            raise ValueError("num_connections must be non-negative")
+
         if connection_type == "nearest":
             self._connect_nearest(source_layer, target_layer, num_connections)
         elif connection_type == "random":
             self._connect_random(source_layer, target_layer, num_connections)
-        elif connection_type == "all":
+        else:
             self._connect_all(source_layer, target_layer)
         
         return self
