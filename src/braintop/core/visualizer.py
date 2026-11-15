@@ -459,8 +459,12 @@ class TopologyVisualizer:
         # Add edges
         intra_ids = {edge.id for edge in self.topology.intra_layer_edges}
         for edge in self.topology.get_all_edges():
-            G.add_edge(edge.source, edge.target, weight=edge.weight,
-                       role="intra" if edge.id in intra_ids else "inter",
-                       **edge.metadata)
+            attributes = dict(edge.metadata)
+            # Structural fields cannot be silently overwritten by user metadata.
+            attributes.update(
+                weight=edge.weight,
+                role="intra" if edge.id in intra_ids else "inter",
+            )
+            G.add_edge(edge.source, edge.target, **attributes)
         
         return G
