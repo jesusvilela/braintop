@@ -39,6 +39,15 @@ class TopologyVisualizer:
         Returns:
             A Plotly Figure object with the 3D visualization
         """
+        valid_color_modes = {
+            "layer", "degree", "betweenness", "closeness", "salience", "normalized_radius"
+        }
+        valid_size_modes = {"degree", "betweenness", "closeness", "salience", "normalized_radius"}
+        if color_by not in valid_color_modes:
+            raise ValueError(f"Unsupported color_by metric '{color_by}'")
+        if size_by not in valid_size_modes:
+            raise ValueError(f"Unsupported size_by metric '{size_by}'")
+
         fig = go.Figure()
 
         layers_to_plot = [
@@ -292,6 +301,10 @@ class TopologyVisualizer:
         nodes = self.topology.get_all_nodes()
         if not nodes:
             return go.Figure()
+        if axis not in ("x", "y", "z"):
+            raise ValueError("axis must be one of 'x', 'y', or 'z'")
+        if not isinstance(sections, int) or sections < 1:
+            raise ValueError("sections must be a positive integer")
 
         axis_index = {"x": 0, "y": 1, "z": 2}[axis]
         axis_pairs = {
