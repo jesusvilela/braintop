@@ -103,11 +103,13 @@ class ConceptualLayer(BaseLayer):
             raise ValueError("spacing_factor must be finite")
 
         if method == "pca":
-            # Simple PCA projection
             positions = self._pca_projection(data)
-        else:
-            # Random projection as fallback
+        elif method == "random":
             positions = self._random_projection(data)
+        else:
+            raise ValueError(
+                f"Unsupported projection method '{method}'. Use 'pca' or 'random'."
+            )
 
         # Apply spacing factor
         positions = [(x * spacing, y * spacing, z * spacing) for x, y, z in positions]
