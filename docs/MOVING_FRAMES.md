@@ -36,11 +36,11 @@ intrinsic correspondence between manifolds.
 
 ### Passive coordinate changes are different from moving a layer
 
-For a local coordinate relabelling (y=Qx+s), the frame must become
+For a local coordinate relabelling $y=Qx+s$, the frame must become
 
-[
+$
 R' = RQ^{\mathsf T}, \qquad t' = t - RQ^{\mathsf T}s.
-]
+$
 
 Then `R' @ y + t' == R @ x + t` up to floating point error. You can apply that
 relabelling atomically:
@@ -87,7 +87,7 @@ The default centrality is **unweighted** hop betweenness and hop closeness.
 Changing the line width or visual color does not alter these values.
 
 To interpret positive edge weights as **affinities** and convert them to
-shortest-path costs (c_{ij}=1/w_{ij}), explicitly opt in:
+shortest-path costs $c_{ij}=1/w_{ij}$, explicitly opt in:
 
 ```python
 from braintop.core.visualizer import TopologyVisualizer
