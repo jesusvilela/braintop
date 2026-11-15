@@ -1,4 +1,4 @@
-"""3D Topology visualizer using Plotly and Dash."""
+"""Interactive 3D topology visualizer using Plotly."""
 
 from typing import Optional, Dict, Any, List, Iterable, Union
 import numpy as np
