@@ -1,20 +1,18 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "braintop"
 version = "0.1.0"
-description = "A beautiful rich 3D topology visualizer for LLMs"
+description = "Composable 3D topology visualization for embeddings, graphs, and geometric layers"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 dependencies = [
     "numpy>=1.20.0",
     "plotly>=5.0.0",
-    "dash>=2.0.0",
     "networkx>=2.5",
-    "scipy>=1.7.0",
     "pydantic>=2.0.0",
 ]
 
@@ -26,6 +24,17 @@ dev = [
     "flake8>=4.0.0",
     "mypy>=0.950",
 ]
+
+openai = ["openai>=1.0.0"]
+sentence-transformers = ["sentence-transformers>=2.0.0"]
+llama-cpp = ["llama-cpp-python>=0.2.0"]
+examples = ["scipy>=1.7.0"]
+static = ["plotly>=6.1.1", "kaleido>=1.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/jesusvilela/braintop"
+Repository = "https://github.com/jesusvilela/braintop"
+Issues = "https://github.com/jesusvilela/braintop/issues"
 
 [project.scripts]
 braintop = "braintop.cli:main"
