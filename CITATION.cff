@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use Braintop in research or software, please cite this repository."
+title: "Braintop: a geometric workbench for concepts, vectors and topology"
+type: software
+authors:
+  - family-names: "Vilela Jato"
+    given-names: "Jesús"
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/jesusvilela/braintop"
