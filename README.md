@@ -84,7 +84,16 @@ The connector provides a small, provider-neutral contract:
 - normalized inference responses;
 - optional attention-like matrices, validated as square, finite, non-negative and row-stochastic;
 - deterministic mock behaviour for offline examples and tests;
-- caller-supplied functions or client objects for external systems.
+- packaged adapters for OpenAI-compatible clients, SentenceTransformers and llama.cpp;
+- caller-supplied functions or client objects for other systems.
+
+Install only the adapter you intend to use:
+
+```bash
+pip install -e ".[openai]"
+pip install -e ".[sentence-transformers]"
+pip install -e ".[llama-cpp]"
+```
 
 The mock provider is intentionally modest: it builds deterministic hash-based vectors from tokens and adjacent token pairs. It is useful for exercising the pipeline without credentials or network access. It is **not** a language model and should not be mistaken for semantic model embeddings.
 
@@ -224,7 +233,18 @@ The Plotly visualizer can:
 - create coordinate-based sectional studies along the x, y or z axis;
 - generate ablation views with edges removed, individual layers isolated, or a layer omitted;
 - export the topology as a NetworkX graph for further analysis;
-- save interactive HTML, or use Plotly's image export for static formats.
+- save interactive HTML; static PNG export is available through the optional `static` extra.
+
+To generate two deterministic showcase views from Braintop's own topology and visualizer
+APIs — a geometry atlas and a synthetic semantic topology — run:
+
+```bash
+pip install -e ".[static]"
+python examples/showcase.py --output-dir build/showcase --require-static
+```
+
+The HTML files are interactive; the PNG files are convenient for documentation and papers.
+The semantic example uses synthetic vectors, not embeddings from a trained model.
 
 The command line is intentionally small:
 
