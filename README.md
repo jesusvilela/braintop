@@ -6,6 +6,8 @@
 
 *Place a structure. Choose a geometry. Turn it slowly. See what becomes visible.*
 
+[![CI](https://github.com/jesusvilela/braintop/actions/workflows/ci.yml/badge.svg)](https://github.com/jesusvilela/braintop/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jesusvilela/braintop/actions/workflows/codeql.yml/badge.svg)](https://github.com/jesusvilela/braintop/actions/workflows/codeql.yml)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-8A9A5B.svg)](LICENSE)
 
@@ -303,6 +305,9 @@ Further reading:
 - [Quick start](docs/QUICKSTART.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Inference bridge contract](docs/LLM_INFERENCE_BRIDGE_SPEC.md)
+- [Changelog](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- [Citation metadata](CITATION.cff)
 - [Contributing](CONTRIBUTING.md)
 
 ## development
