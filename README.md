@@ -75,6 +75,13 @@ A few implementation details matter:
 
 The point is not to flatten every geometry into a single story. It is to let different structures sit beside one another, while keeping their construction visible.
 
+**A declared bridge, with remainder.** The sphere-cap → hyperbolic-plane
+experiment allows an explicit radial map with units, provenance and paired
+nodes. It reports ideal and observed geodesic distortion separately and bounds
+their difference using target-mismatch errors. This is a chosen comparison,
+**not** canonical transport or a claim that different curvatures are
+isometric. See the [correspondence contract](docs/CORRESPONDENCE.md).
+
 **Intrinsic distance is now separate from the display.** Sphere and hyperbolic
 layers preserve their original geometric parameters and support within-layer
 geodesic distances through `intrinsic_distance` and
@@ -322,6 +329,7 @@ Further reading:
 - [Inference bridge contract](docs/LLM_INFERENCE_BRIDGE_SPEC.md)
 - [Moving-frame consistency and graph semantics](docs/MOVING_FRAMES.md)
 - [Intrinsic spherical and hyperbolic geodesics](docs/INTRINSIC_GEODESICS.md)
+- [Declared cross-manifold correspondence and its remainder](docs/CORRESPONDENCE.md)
 - [Changelog](CHANGELOG.md)
 - [Security policy](SECURITY.md)
 - [Citation metadata](CITATION.cff)
