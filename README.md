@@ -75,6 +75,14 @@ A few implementation details matter:
 
 The point is not to flatten every geometry into a single story. It is to let different structures sit beside one another, while keeping their construction visible.
 
+**Intrinsic distance is now separate from the display.** Sphere and hyperbolic
+layers preserve their original geometric parameters and support within-layer
+geodesic distances through `intrinsic_distance` and
+`TopologyBuilder.connect_intrinsic_neighbors`. A simple hyperbolic control
+shows that a visually nearer point need not be geodesically nearer. Torus
+geodesic distance and cross-manifold transport remain explicitly unsupported.
+See the [intrinsic geodesics experiment](docs/INTRINSIC_GEODESICS.md).
+
 **Moving-frame experiment.** Every layer now carries an explicit rigid local-to-world
 display frame. A passive change of the layer's local coordinates preserves its world
 position and nearest-neighbour correspondence; physically moving just one layer can
@@ -313,6 +321,7 @@ Further reading:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Inference bridge contract](docs/LLM_INFERENCE_BRIDGE_SPEC.md)
 - [Moving-frame consistency and graph semantics](docs/MOVING_FRAMES.md)
+- [Intrinsic spherical and hyperbolic geodesics](docs/INTRINSIC_GEODESICS.md)
 - [Changelog](CHANGELOG.md)
 - [Security policy](SECURITY.md)
 - [Citation metadata](CITATION.cff)
