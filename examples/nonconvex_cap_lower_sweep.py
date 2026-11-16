@@ -17,7 +17,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from braintop.core.correspondence import (
-    RadialCapMap, compare_radial_cap, radial_cap_global_lower_bound,
+    RadialCapMap, compare_radial_cap, radial_cap_global_envelope,
 )
 from braintop.utils.builders import TopologyBuilder
 from braintop.utils.static_export import write_image_with_bootstrap_retry
@@ -56,7 +56,7 @@ def collect():
             angle_offset=0.2,
         )
         sl, hl = builder.topology.get_layer("S"), builder.topology.get_layer("H")
-        lower = radial_cap_global_lower_bound(sl, hl, spec)
+        envelope = radial_cap_global_envelope(sl, hl, spec)
         report = compare_radial_cap(
             sl, hl, spec, [(f"S_node_{i}", f"H_node_{i}") for i in range(3)]
         )
@@ -73,14 +73,18 @@ def collect():
         radial_ratio = radial.mapped_target_distance / (LAMBDA * radial.source_distance)
         if not math.isclose(radial_ratio, 1.0, rel_tol=1e-11):
             raise ArithmeticError("Sharp radial lower control failed")
-        if observed_ratio < lower.lower_stretch:
+        if observed_ratio < envelope.lower_stretch:
             raise ArithmeticError("Global lower bound violated")
+        if observed_ratio > envelope.upper_stretch + 1e-10:
+            raise ArithmeticError("Cap-dependent upper bound violated")
         records.append({
             "cap_degrees": theta * 180 / math.pi,
             "epsilon_radians": epsilon,
             "observed_ratio": observed_ratio,
             "analytical_ratio": expected,
-            "lower_factor": lower.lower_stretch,
+            "lower_factor": envelope.lower_stretch,
+            "cap_upper_bound": envelope.upper_stretch,
+            "geodesic_detour_factor": envelope.detour_factor,
             "radial_ratio": radial_ratio,
             "source_opposite_distance": opposite.source_distance,
             "target_opposite_distance": opposite.mapped_target_distance,
@@ -109,6 +113,12 @@ def render(rows, directory, static):
         line=dict(color="#f1bd67", width=2, dash="dash"),
     ))
     fig.add_trace(go.Scatter(
+        x=x, y=[r["cap_upper_bound"] for r in rows],
+        mode="lines+markers", name="Provable cap-dependent upper bound",
+        line=dict(color="#ba9bea", width=2, dash="dot"),
+        marker=dict(size=7),
+    ))
+    fig.add_trace(go.Scatter(
         x=x, y=[r["lower_factor"] for r in rows],
         mode="lines", name="Sharp global lower factor = 1",
         line=dict(color="#9eb9f0", width=2),
@@ -116,7 +126,7 @@ def render(rows, directory, static):
     fig.update_layout(
         title=dict(
             text="THE SOUTH POLE IS A BOUNDARY<br>"
-                 "<sup>A global lower bound survives. No cap-independent upper factor does.</sup>",
+                 "<sup>Global lower bound + cap-dependent upper · no uniform cap-size upper factor</sup>",
             x=0.04, font=dict(size=23),
         ),
         template="plotly_dark",
@@ -142,7 +152,7 @@ def render(rows, directory, static):
         print(f"PNG skipped: {error}")
     for r in rows:
         print("SOUTH_CONTROL", r["epsilon_radians"],
-              r["observed_ratio"], r["lower_factor"])
+              r["observed_ratio"], r["lower_factor"], r["cap_upper_bound"])
     print("Wrote", path, html)
     if png.exists():
         print("Wrote", png)
