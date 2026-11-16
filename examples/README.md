@@ -80,6 +80,9 @@ Demonstrates Braintop's sharp global lower distance factor on a declared
 sphere-to-hyperbolic radial map, including caps larger than a hemisphere.
 Opposite points near the excluded south pole exhibit increasing distance
 ratios, showing that no upper constant can be independent of cap size.
+The same chart now includes a **conservative cap-dependent upper
+envelope** from a proved spherical boundary-detour construction, along
+with the sharp global lower factor and the observed/analytic ratios.
 Exports HTML, CSV and PNG from the actual intrinsic metric API.
 
 ```bash

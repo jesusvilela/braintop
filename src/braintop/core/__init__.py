@@ -7,6 +7,7 @@ from braintop.core.correspondence import (
     RadialCapMap, CorrespondenceReport, compare_radial_cap,
     ConvexCapDistortionBound, convex_cap_distortion_bound,
     RadialCapGlobalLowerBound, radial_cap_global_lower_bound,
+    RadialCapGlobalEnvelope, radial_cap_global_envelope,
 )
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "convex_cap_distortion_bound",
     "RadialCapGlobalLowerBound",
     "radial_cap_global_lower_bound",
+    "RadialCapGlobalEnvelope",
+    "radial_cap_global_envelope",
 ]
