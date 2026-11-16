@@ -245,3 +245,55 @@ def test_intrinsic_distance_unchanged_under_polar_angle_periodicity():
         layer.nodes[1].metadata["intrinsic_parameters"] = (1.7, 2.0 + 2 * math.pi)
         after = intrinsic_distance(layer, "m_node_0", "m_node_1")
         assert after == pytest.approx(before, rel=1e-12, abs=1e-12)
+
+
+def test_large_hyperbolic_radii_do_not_overflow_finite_geodesics():
+    """Previously sinh(500)*sinh(490) overflowed even on the same meridian."""
+    _, layer = layer_from("hyperbolic", [
+        (0.0, 0.0),
+        (500.0, 0.0),
+        (490.0, 0.0),
+        (500.0, math.pi),
+        (500.0, 1e-4),
+    ], curvature=-1.0)
+
+    assert intrinsic_distance(layer, "m_node_0", "m_node_1") == pytest.approx(500.0)
+    assert intrinsic_distance(layer, "m_node_1", "m_node_2") == pytest.approx(10.0)
+    assert intrinsic_distance(layer, "m_node_1", "m_node_3") == pytest.approx(
+        1000.0, abs=1e-12
+    )
+    angular_distance = intrinsic_distance(layer, "m_node_1", "m_node_4")
+    expected = 1000.0 + 2.0 * math.log(math.sin(5e-5))
+    assert angular_distance == pytest.approx(expected, abs=1e-10)
+
+
+def test_large_hyperbolic_angle_periodicity_and_symmetry():
+    from braintop.core.intrinsic import _distance
+
+    a = np.array([450.0, 0.3])
+    b = np.array([449.0, 0.3 + 2 * math.pi])
+    forward = _distance("hyperbolic", 1.0, a, b)
+    backward = _distance("hyperbolic", 1.0, b, a)
+    assert math.isfinite(forward)
+    assert forward == pytest.approx(1.0, abs=1e-10)
+    assert forward == pytest.approx(backward, abs=1e-12)
+
+    # Tiny angular separation is still a non-zero geodesic even though
+    # the unscaled sinh product is not representable in a float.
+    close = _distance(
+        "hyperbolic", 1.0, np.array([500.0, 0.0]),
+        np.array([500.0, 1e-300])
+    )
+    assert math.isfinite(close)
+    assert close > 0.0
+
+
+def test_large_hyperbolic_curvature_scale_rejects_nonfinite_product():
+    from braintop.core.intrinsic import _distance
+
+    with pytest.raises(ValueError, match="finite numeric domain"):
+        _distance(
+            "hyperbolic", 2.0,
+            np.array([1e308, 0.0]),
+            np.array([1e308, 0.1]),
+        )
