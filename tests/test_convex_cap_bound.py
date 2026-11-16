@@ -194,3 +194,29 @@ def test_near_north_pole_cap_bound_remains_finite():
     bound = cap_bound(builder, spec)
     assert math.isfinite(bound.angular_stretch_max)
     assert bound.angular_stretch_max == pytest.approx(1.0, abs=1e-12)
+
+
+def test_large_finite_hyperbolic_radius_flows_through_report_and_bound():
+    """The analytic envelope can be finite even when naive sinh products overflow."""
+    source = np.array([[0.0, 0.0], [0.1, 0.0], [0.2, 0.0], [0.2, 0.1]])
+    target = np.array([[0.0, 0.0], [250.0, 0.0], [500.0, 0.0], [500.0, 0.1]])
+    builder = TopologyBuilder("large", "Large finite radius")
+    builder.add_riemannian_layer(
+        "sphere", 4, "sphere", radius=1.0,
+        length_unit="source-length", parameters=source,
+    )
+    builder.add_riemannian_layer(
+        "hyperbolic", 4, "hyperbolic", curvature=-1.0,
+        length_unit="target-length", parameters=target,
+    )
+    spec = RadialCapMap(
+        "sphere", "hyperbolic", 2500.0, 0.2,
+        "source-length", "target-length", "large-radius-control",
+    )
+    pairs = [(f"sphere_node_{i}", f"hyperbolic_node_{i}") for i in range(4)]
+    bound = cap_bound(builder, spec)
+    report = cap_report(builder, spec, pairs, max_target_error=0.0)
+    assert math.isfinite(bound.angular_stretch_max)
+    assert math.isfinite(report.max_abs_ideal_remainder)
+    assert report.max_target_mismatch == 0.0
+    assert all(math.isfinite(p.mapped_target_distance) for p in report.pair_remainders)
