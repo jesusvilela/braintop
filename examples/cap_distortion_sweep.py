@@ -20,6 +20,7 @@ from braintop.core.correspondence import (
     RadialCapMap, compare_radial_cap, convex_cap_distortion_bound,
 )
 from braintop.utils.builders import TopologyBuilder
+from braintop.utils.static_export import write_image_with_bootstrap_retry
 
 
 CAPS = (0.05, 0.12, 0.24, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.55)
@@ -138,7 +139,7 @@ def save(rows, output_dir, require_static):
     figure.write_html(str(html_path), include_plotlyjs=True)
     png_path = output_dir / "cap-distortion-sweep.png"
     try:
-        figure.write_image(str(png_path), width=1450, height=850, scale=2)
+        write_image_with_bootstrap_retry(figure, str(png_path), width=1450, height=850, scale=2)
     except Exception as exc:
         if require_static:
             raise RuntimeError(
