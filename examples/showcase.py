@@ -16,6 +16,7 @@ import numpy as np
 from braintop.core.visualizer import TopologyVisualizer
 from braintop.integrations.llm_connector import LLMConnector
 from braintop.utils.builders import TopologyBuilder
+from braintop.utils.static_export import write_image_with_bootstrap_retry
 
 
 def _style_figure(figure: Any, title: str, subtitle: str) -> Any:
@@ -225,7 +226,7 @@ def _save(figure: Any, output_dir: Path, stem: str, require_static: bool) -> Non
 
     figure.write_html(str(html_path), include_plotlyjs=True, full_html=True)
     try:
-        figure.write_image(str(png_path), width=1800, height=1200, scale=2)
+        write_image_with_bootstrap_retry(figure, str(png_path), width=1800, height=1200, scale=2)
     except Exception as exc:
         if require_static:
             raise RuntimeError(
