@@ -142,7 +142,112 @@ $
 
 Thus no **uniform finite upper constant independent of cap size** holds
 as the cap approaches the excluded south pole. This does **not** rule
-out a cap-dependent upper bound for each fixed $\theta_{\max}<\pi$.
+out the constructive cap-dependent bound derived below.
+
+## A conservative upper bound for every fixed cap below the south pole
+
+A cap larger than a hemisphere is not geodesically convex: an ambient
+shortest spherical arc can pass through the *excluded* south-polar disk.
+We can nevertheless construct a controlled path **inside** the cap.
+
+Let $\Theta=\theta_{\max}$ and $c=a\lambda R$.
+The local differential stretching of the declared radial map is at most
+
+$
+A(\Theta)=\frac{\sinh(c\Theta)}{c\sin\Theta}.
+$
+
+For $\Theta\leq\pi/2$ the cap is geodesically convex, and a shortest
+source geodesic stays inside it. We may take a detour factor $B(\Theta)=1$.
+
+For $\pi/2<\Theta<\pi$, the excluded disk about the south pole has
+angular radius $\alpha=\pi-\Theta<\pi/2$ and is itself geodesically
+convex. A minimizing spherical arc between cap points intersects this
+excluded disk in at most one contiguous segment. Replace that segment
+by the shorter *latitude-boundary* arc between its entry and exit points.
+The replacement stays inside the original cap.
+
+For boundary points separated in longitude by $\delta\in[0,\pi]$,
+
+$
+L_{\partial}=R\sin\alpha\,\delta,\qquad
+d_S(x,y)=2R\arcsin\!\left(\sin\alpha\sin\frac{\delta}{2}\right).
+$
+
+The function $u\mapsto\arcsin(\sin\alpha\sin u)$ is concave on
+$[0,\pi/2]$, vanishes at zero, and equals $\alpha$ at $\pi/2$.
+Its graph lies above the secant line, giving
+
+$
+d_S(x,y)\geq\frac{2R\alpha}{\pi}\,\delta,
+\qquad
+L_{\partial}\leq
+\underbrace{\frac{\pi\sin\alpha}{2\alpha}}_{B(\Theta)}
+\,d_S(x,y).
+$
+
+The discarded spherical segment is at least $d_S(x,y)$ long.
+Thus replacing it changes the total path length by **at most**
+the factor $B(\Theta)$. Mapping this explicitly constructed path into
+the hyperbolic disk and applying the local stretch ceiling gives
+
+$
+1\leq
+\frac{d_H(F(p),F(q))}{\lambda\,d_S(p,q)}
+\leq C(\Theta),\qquad
+C(\Theta)=A(\Theta)B(\Theta),
+$
+
+where
+
+$
+B(\Theta)=
+\begin{cases}
+1,&0<\Theta\leq\pi/2,\\[2pt]
+\dfrac{\pi\sin(\pi-\Theta)}{2(\pi-\Theta)},
+&\pi/2<\Theta<\pi.
+\end{cases}
+$
+
+For nonconvex caps, $1<B(\Theta)<\pi/2$. The upper bound is
+**conservative**: $B$ is a geometric detour penalty, not the exact
+optimal Lipschitz constant of $F$. The lower bound remains sharp,
+using the separate target-convexity proof above. At $\Theta=\pi/2$,
+the two formulas join continuously. For every fixed $\Theta<\pi$,
+$C(\Theta)$ is finite under the usual finite-parameter conditions.
+
+For registered *observed* target samples $q_i$ with mismatches $e_i$,
+the same argument yields a bound that preserves its remainder:
+
+$
+\lambda d_S(p_i,p_j)-(e_i+e_j)
+\leq d_H(q_i,q_j)
+\leq\lambda C(\Theta)d_S(p_i,p_j)+(e_i+e_j).
+$
+
+The API \`radial_cap_global_envelope\` returns the sharp lower factor,
+the maximal local angular stretch $A$, the detour factor $B$, and the
+conservative upper factor $C$ separately. The legacy
+\`convex_cap_distortion_bound\` remains restricted to $\Theta<\pi/2$
+and retains its sharper convex-domain interpretation. No bound here
+asserts an isometry or canonical manifold transport.
+
+### Falsification and numerical boundaries
+
+The shortest spherical arc and detour argument are analytic.
+The deterministic numerical sweep uses finite samples and a separately
+implemented Poincaré-disk distance expression to check that sampled
+ratios stay in the declared envelope. A confirmed violation from a
+valid finite case would kill the implementation claim; passing
+samples does not replace the geometric proof.
+
+There can be no upper factor **independent of cap size**: the opposite
+south-boundary pair described above has ratio
+$(\pi-\varepsilon)/\varepsilon\to\infty$. The cap-dependent factor
+$C(\Theta)$ diverges as $\Theta\to\pi$ in agreement with this
+counterexample. Near the south pole, floating-point angle precision
+and finite numeric range must be tracked separately from this exact
+geometric statement.
 
 ## A two-sided global bound on convex caps
 
