@@ -130,7 +130,12 @@ does **not** validate intrinsic sheaf transport, connections between distinct
 manifolds, parallel transport, holonomy, or moving moving frames in the
 differential-geometric sense.
 
-The next research step requires a typed correspondence
+A bounded [radial correspondence experiment](CORRESPONDENCE.md) now
+instantiates one **declared** sphere-cap to hyperbolic map with explicit
+metric remainder. It is a finite-sample comparison, not intrinsic transport
+or a canonical connection between different manifolds.
+
+The broader research step requires a typed correspondence
 `source-manifold × target-manifold -> admissible mapping + metric + remainder`,
 including domain, units, uncertainty and a reference oracle. Do not infer
 such a map from 3D drawing proximity.
