@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 
 from braintop.core.topology import Topology, LayerModel, EdgeModel
+from braintop.core.intrinsic import nearest_intrinsic_pairs
 from braintop.core.frames import RigidFrame3D, Matrix3, Vector3
 from braintop.layers.conceptual import ConceptualLayer
 from braintop.layers.riemannian import RiemannianLayer
@@ -71,6 +72,7 @@ class TopologyBuilder:
         num_nodes: int,
         manifold_type: str = "sphere",
         labels: Optional[List[str]] = None,
+        parameters: Optional[np.ndarray] = None,
         **kwargs: Any
     ) -> "TopologyBuilder":
         """Add a Riemannian layer to the topology.
@@ -80,6 +82,7 @@ class TopologyBuilder:
             num_nodes: Number of nodes in the layer
             manifold_type: Type of manifold ('sphere', 'torus', 'hyperbolic')
             labels: Optional node labels
+            parameters: Explicit two-column geometric parameters, if available
             **kwargs: Additional configuration
             
         Returns:
@@ -89,7 +92,7 @@ class TopologyBuilder:
         layer.set_config(manifold_type=manifold_type, **kwargs)
         
         # Create layer with nodes
-        layer_model = layer.create_layer_with_nodes(num_nodes, labels)
+        layer_model = layer.create_layer_with_nodes(num_nodes, labels, parameters)
         self.topology.add_layer(layer_model)
         
         return self
@@ -166,6 +169,57 @@ class TopologyBuilder:
         self.topology.reexpress_layer(layer_id, rotation, translation)
         return self
 
+    def connect_intrinsic_neighbors(
+        self, layer_id: str, k: int = 1
+    ) -> "TopologyBuilder":
+        """Join each point's k nearest neighbours using intrinsic geodesics.
+
+        Only supported for a single sphere or hyperbolic layer with preserved
+        polar chart coordinates. Does NOT infer cross-manifold transport.
+        Edges are undirected, with explicit positive affinity 1/(1+distance).
+        Repeated calls are idempotent for the same node pairs.
+        """
+        layer = self.topology.get_layer(layer_id)
+        if layer is None:
+            raise ValueError(f"Unknown layer: {layer_id}")
+        pairs = nearest_intrinsic_pairs(layer, k=k)
+        member_ids = {node.id for node in layer.nodes}
+        occupied = {
+            tuple(sorted((edge.source, edge.target)))
+            for edge in self.topology.intra_layer_edges
+            if edge.source in member_ids and edge.target in member_ids
+        }
+        existing_ids = {edge.id for edge in self.topology.get_all_edges()}
+        metric = (
+            "sphere_geodesic"
+            if layer.config.get("manifold_type") == "sphere"
+            else "hyperbolic_geodesic"
+        )
+
+        for source_id, target_id, distance in pairs:
+            if (source_id, target_id) in occupied:
+                continue
+            while f"edge_{self._edge_counter}" in existing_ids:
+                self._edge_counter += 1
+            edge_id = f"edge_{self._edge_counter}"
+            edge = EdgeModel(
+                id=edge_id,
+                source=source_id,
+                target=target_id,
+                weight=1.0 / (1.0 + distance),
+                metadata={
+                    "metric": metric,
+                    "intrinsic_distance": distance,
+                    "units": "layer_geodesic_length",
+                    "weight_transform": "1/(1+intrinsic_distance)",
+                },
+            )
+            self.topology.add_intra_layer_edge(edge)
+            occupied.add((source_id, target_id))
+            existing_ids.add(edge_id)
+            self._edge_counter += 1
+        return self
+
     def connect_layers(
         self,
         source_layer_id: str,
@@ -189,6 +243,11 @@ class TopologyBuilder:
         
         if not source_layer or not target_layer:
             raise ValueError("Invalid layer IDs")
+        if source_layer_id == target_layer_id:
+            raise ValueError(
+                "connect_layers requires distinct layers; use connect_intrinsic_neighbors "
+                "for a supported within-layer geometric relation"
+            )
         
         if connection_type not in ("nearest", "random", "all"):
             raise ValueError(

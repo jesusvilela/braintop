@@ -62,7 +62,23 @@ class RiemannianLayer(BaseLayer):
         else:
             parameters = self._validate_parameter_array(parameters, num_nodes)
 
-        # Compute 3D positions on manifold
+        # Preserve original manifold coordinates independently of the mutable
+        # 3D display frame. A chart does not define cross-manifold transport.
+        manifold_type = self.config.get("manifold_type", "sphere")
+        chart = {
+            "sphere": "sphere_polar_v1",
+            "torus": "torus_angles_v1",
+            "hyperbolic": "hyperbolic_geodesic_polar_v1",
+        }.get(manifold_type)
+        if chart is None:
+            raise ValueError(f"Unsupported manifold type: {manifold_type}")
+        if manifold_type == "sphere" and np.any(
+            (parameters[:, 0] < 0) | (parameters[:, 0] > np.pi)
+        ):
+            raise ValueError("Sphere polar theta must lie in [0, pi]")
+        if manifold_type == "hyperbolic" and np.any(parameters[:, 0] < 0):
+            raise ValueError("Hyperbolic geodesic radius must be non-negative")
+
         positions = self.compute_positions(parameters, **kwargs)
         radii = np.array([np.linalg.norm(position) for position in positions])
         radius_min = float(np.min(radii))
@@ -79,6 +95,10 @@ class RiemannianLayer(BaseLayer):
                 layer_id=self.layer_id,
                 metadata={
                     "manifold_type": self.config.get("manifold_type"),
+                    "intrinsic_chart": chart,
+                    "intrinsic_parameters": (
+                        float(parameters[i, 0]), float(parameters[i, 1])
+                    ),
                     "curvature": self.config.get("curvature"),
                     "radial_distance": float(radii[i]),
                     "normalized_radius": float((radii[i] - radius_min) / radius_range),
@@ -169,6 +189,10 @@ class RiemannianLayer(BaseLayer):
             rho_max = float(self.config.get("max_radius", 4.0))
             if rho_max <= 0 or not np.isfinite(rho_max):
                 raise ValueError("Hyperbolic max_radius must be positive and finite")
+            if curvature_scale * rho_max >= 700.0:
+                raise ValueError(
+                    "Hyperbolic area sampling exceeds the finite numeric range"
+                )
 
             u = np.random.random(num_nodes)
             rho = np.arccosh(1.0 + u * (np.cosh(curvature_scale * rho_max) - 1.0)) / curvature_scale
@@ -191,8 +215,8 @@ class RiemannianLayer(BaseLayer):
             List of 3D Cartesian coordinates
         """
         radius = float(self.config.get("radius", 1.0))
-        if radius <= 0:
-            raise ValueError("Sphere radius must be positive")
+        if not np.isfinite(radius) or radius <= 0:
+            raise ValueError("Sphere radius must be positive and finite")
 
         theta = params[:, 0]
         phi = params[:, 1]
@@ -216,8 +240,8 @@ class RiemannianLayer(BaseLayer):
         """
         R = float(self.config.get("radius", 1.0))  # Major radius
         r = float(self.config.get("minor_radius", R * 0.4))
-        if R <= 0 or r <= 0:
-            raise ValueError("Torus radii must be positive")
+        if not np.isfinite(R) or not np.isfinite(r) or R <= 0 or r <= 0:
+            raise ValueError("Torus radii must be positive and finite")
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
@@ -242,8 +266,8 @@ class RiemannianLayer(BaseLayer):
         """
         R = float(self.config.get("radius", 1.0))
         r = float(self.config.get("minor_radius", R * 0.4))
-        if R <= 0 or r <= 0:
-            raise ValueError("Torus radii must be positive")
+        if not np.isfinite(R) or not np.isfinite(r) or R <= 0 or r <= 0:
+            raise ValueError("Torus radii must be positive and finite")
         if r >= R:
             raise ValueError("Torus minor_radius must be smaller than radius")
 
@@ -276,13 +300,10 @@ class RiemannianLayer(BaseLayer):
             List of 3D Cartesian coordinates (with z representing depth)
         """
         curvature = self._hyperbolic_curvature()
-        configured_curvature = self.config.get("curvature")
-        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
-        if curvature >= 0:
-            raise ValueError("Hyperbolic curvature must be negative")
-
         curvature_scale = 1.0 / np.sqrt(abs(curvature))
-        rho = np.maximum(params[:, 0], 0.0)
+        rho = params[:, 0]
+        if np.any(rho < 0):
+            raise ValueError("Hyperbolic geodesic radius must be non-negative")
         theta = params[:, 1]
 
         # Poincare disk radial coordinate for geodesic radius rho on curvature K:
@@ -295,10 +316,6 @@ class RiemannianLayer(BaseLayer):
         z = rho * curvature_scale
 
         positions = [(float(xi), float(yi), float(zi)) for xi, yi, zi in zip(x, y, z)]
-
-        
-        positions = [(float(xi), float(yi), float(zi)) 
-                    for xi, yi, zi in zip(x, y, z)]
         
         return positions
 
