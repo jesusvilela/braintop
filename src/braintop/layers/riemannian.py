@@ -189,6 +189,10 @@ class RiemannianLayer(BaseLayer):
             rho_max = float(self.config.get("max_radius", 4.0))
             if rho_max <= 0 or not np.isfinite(rho_max):
                 raise ValueError("Hyperbolic max_radius must be positive and finite")
+            if curvature_scale * rho_max >= 700.0:
+                raise ValueError(
+                    "Hyperbolic area sampling exceeds the finite numeric range"
+                )
 
             u = np.random.random(num_nodes)
             rho = np.arccosh(1.0 + u * (np.cosh(curvature_scale * rho_max) - 1.0)) / curvature_scale
@@ -296,11 +300,6 @@ class RiemannianLayer(BaseLayer):
             List of 3D Cartesian coordinates (with z representing depth)
         """
         curvature = self._hyperbolic_curvature()
-        configured_curvature = self.config.get("curvature")
-        curvature = -1.0 if configured_curvature is None else float(configured_curvature)
-        if curvature >= 0:
-            raise ValueError("Hyperbolic curvature must be negative")
-
         curvature_scale = 1.0 / np.sqrt(abs(curvature))
         rho = params[:, 0]
         if np.any(rho < 0):
