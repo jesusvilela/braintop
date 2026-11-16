@@ -16,7 +16,7 @@ from typing import List, Sequence, Tuple
 import numpy as np
 
 from braintop.core.intrinsic import _distance, _metric, _parameters
-from braintop.core.topology import LayerModel
+from braintop.core.topology import LayerModel, LayerType
 
 
 @dataclass(frozen=True)
@@ -120,10 +120,15 @@ def compare_radial_cap(
     """
     if source_layer.id != spec.source_layer_id or target_layer.id != spec.target_layer_id:
         raise ValueError("Correspondence layer IDs do not match the provided layers")
+    if (
+        source_layer.layer_type != LayerType.RIEMANNIAN
+        or target_layer.layer_type != LayerType.RIEMANNIAN
+        or source_layer.config.get("manifold_type") != "sphere"
+        or target_layer.config.get("manifold_type") != "hyperbolic"
+    ):
+        raise ValueError("Only explicit sphere-cap to hyperbolic correspondence is implemented")
     src_kind, src_radius = _metric(source_layer)
     tgt_kind, tgt_scale = _metric(target_layer)
-    if src_kind != "sphere" or tgt_kind != "hyperbolic":
-        raise ValueError("Only explicit sphere-cap to hyperbolic correspondence is implemented")
     if not isfinite(max_target_error) or max_target_error < 0:
         raise ValueError("max_target_error must be finite and non-negative")
     if not pairs:
