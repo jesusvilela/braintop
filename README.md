@@ -96,10 +96,15 @@ CSV. For **all** declared caps smaller than the whole sphere
 ($0<\theta_{\max}<\pi$), including those larger than a hemisphere,
 `radial_cap_global_lower_bound` provides the sharp lower stretch 1:
 $d_H(F(p),F(q))\geq\lambda d_S(p,q)$. The upper envelope above remains
-restricted to convex caps. Opposite boundary points near the south pole
-show why no cap-size-independent upper factor can survive as
-$\theta_{\max}\to\pi$. See the
-[nonconvex-cap control](examples/nonconvex_cap_lower_sweep.py).
+sharp for convex caps. Beyond a hemisphere, the new
+`radial_cap_global_envelope` provides a **conservative, cap-dependent
+two-sided bound** by multiplying the local angular ceiling by a justified
+spherical boundary-detour factor. The lower bound remains sharp, but the
+new nonconvex upper bound is not claimed optimal. Opposite boundary
+points near the south pole show why no upper factor independent of cap
+size can survive as $\theta_{\max}\to\pi$. See the
+[nonconvex-cap sweep](examples/nonconvex_cap_lower_sweep.py) and the
+[detour proof](docs/CORRESPONDENCE.md).
 
 **Intrinsic distance is now separate from the display.** Sphere and hyperbolic
 layers preserve their original geometric parameters and support within-layer
