@@ -124,6 +124,10 @@ def intrinsic_distance(
     members = {node.id: node for node in layer.nodes}
     if len(members) != len(layer.nodes):
         raise ValueError("Duplicate node IDs prevent intrinsic comparisons")
+    if isinstance(source, NodeModel) and source.layer_id != layer.id:
+        raise ValueError("Source node belongs to a different layer")
+    if isinstance(target, NodeModel) and target.layer_id != layer.id:
+        raise ValueError("Target node belongs to a different layer")
     a_id = source.id if isinstance(source, NodeModel) else source
     b_id = target.id if isinstance(target, NodeModel) else target
     if a_id not in members or b_id not in members:
