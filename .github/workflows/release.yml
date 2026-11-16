@@ -4,39 +4,85 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build and validate distributions
+    name: Test, build and validate distributions
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: Build distributions
+      - name: Install test and packaging dependencies
         run: |
           python -m pip install --upgrade build twine
-          python -m build
-          python -m twine check dist/*
+          python -m pip install -e ".[dev]"
+
+      - name: Run release regression tests
+        run: python -m pytest -q
+
+      - name: Check version matches release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+
+          with open("pyproject.toml", "rb") as handle:
+              version = tomllib.load(handle)["project"]["version"]
+          actual = os.environ["GITHUB_REF_NAME"]
+          expected = f"v{version}"
+          if actual != expected:
+              raise SystemExit(f"Release tag {actual} does not match package version {expected}")
+          print(f"Tag matches package version: {actual}")
+          PY
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Validate distributions
+        run: python -m twine check dist/*
 
       - name: Store distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
           if-no-files-found: error
           retention-days: 7
 
+  artifact-smoke:
+    name: Verify downloaded release artifacts
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Verify distribution contents
+        run: |
+          python -m pip install twine
+          python -m twine check dist/*
+          test -n "$(ls -1 dist/*.whl)"
+          test -n "$(ls -1 dist/*.tar.gz)"
+
   publish:
     name: Publish to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -46,7 +92,7 @@ jobs:
       id-token: write
     steps:
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-package-distributions
           path: dist/
