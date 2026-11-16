@@ -5,6 +5,7 @@ import numpy as np
 
 from braintop.core.topology import Topology, LayerModel, EdgeModel
 from braintop.core.intrinsic import nearest_intrinsic_pairs
+from braintop.core.correspondence import RadialCapMap, compare_radial_cap
 from braintop.core.frames import RigidFrame3D, Matrix3, Vector3
 from braintop.layers.conceptual import ConceptualLayer
 from braintop.layers.riemannian import RiemannianLayer
@@ -216,6 +217,81 @@ class TopologyBuilder:
             )
             self.topology.add_intra_layer_edge(edge)
             occupied.add((source_id, target_id))
+            existing_ids.add(edge_id)
+            self._edge_counter += 1
+        return self
+
+    def connect_declared_correspondence(
+        self,
+        spec: RadialCapMap,
+        pairs: List[tuple],
+        max_target_error: float = 1e-9,
+    ) -> "TopologyBuilder":
+        """Connect explicitly paired sphere/hyperbolic nodes after metric audit.
+
+        This is a chosen mapping and finite-sample consistency check, NOT
+        canonical inter-manifold transport. No nearest-neighbour guessing and
+        no implicit unit conversion. Edges are deliberately unweighted links.
+        """
+        source_layer = self.topology.get_layer(spec.source_layer_id)
+        target_layer = self.topology.get_layer(spec.target_layer_id)
+        if source_layer is None or target_layer is None:
+            raise ValueError("Declared correspondence refers to unknown layers")
+
+        # Evaluate *all* matches before adding *any* edge.
+        report = compare_radial_cap(
+            source_layer, target_layer, spec, pairs,
+            max_target_error=max_target_error,
+        )
+        occupied = {
+            (edge.source, edge.target): edge
+            for edge in self.topology.inter_layer_edges
+        }
+        new_matches = []
+        for match in report.matches:
+            existing = occupied.get((match.source_id, match.target_id))
+            if existing is not None:
+                meta = existing.metadata
+                identical = (
+                    meta.get("relation") == "declared_radial_cap"
+                    and meta.get("provenance") == spec.provenance
+                    and meta.get("radial_scale") == spec.radial_scale
+                    and meta.get("cap_theta") == spec.cap_theta
+                    and meta.get("angle_offset") == spec.angle_offset
+                    and meta.get("source_length_unit") == spec.source_length_unit
+                    and meta.get("target_length_unit") == spec.target_length_unit
+                )
+                if not identical:
+                    raise ValueError(
+                        "An incompatible edge already occupies a declared node pair"
+                    )
+                continue
+            new_matches.append(match)
+
+        existing_ids = {edge.id for edge in self.topology.get_all_edges()}
+        for match in new_matches:
+            while f"edge_{self._edge_counter}" in existing_ids:
+                self._edge_counter += 1
+            edge_id = f"edge_{self._edge_counter}"
+            edge = EdgeModel(
+                id=edge_id,
+                source=match.source_id,
+                target=match.target_id,
+                weight=1.0,
+                metadata={
+                    "relation": "declared_radial_cap",
+                    "provenance": spec.provenance,
+                    "radial_scale": spec.radial_scale,
+                    "cap_theta": spec.cap_theta,
+                    "angle_offset": spec.angle_offset,
+                    "source_length_unit": spec.source_length_unit,
+                    "target_length_unit": spec.target_length_unit,
+                    "target_mismatch": match.mismatch,
+                    "max_target_error": max_target_error,
+                    "weight_semantics": "unweighted_declared_correspondence",
+                },
+            )
+            self.topology.add_inter_layer_edge(edge)
             existing_ids.add(edge_id)
             self._edge_counter += 1
         return self
