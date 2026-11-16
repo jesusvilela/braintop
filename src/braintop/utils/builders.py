@@ -183,13 +183,18 @@ class TopologyBuilder:
         if layer is None:
             raise ValueError(f"Unknown layer: {layer_id}")
         pairs = nearest_intrinsic_pairs(layer, k=k)
+        member_ids = {node.id for node in layer.nodes}
         occupied = {
             tuple(sorted((edge.source, edge.target)))
             for edge in self.topology.intra_layer_edges
-            if edge.source in {node.id for node in layer.nodes}
+            if edge.source in member_ids and edge.target in member_ids
         }
         existing_ids = {edge.id for edge in self.topology.get_all_edges()}
-        metric = "sphere_geodesic" if layer.config.get("manifold_type") == "sphere" else "hyperbolic_geodesic"
+        metric = (
+            "sphere_geodesic"
+            if layer.config.get("manifold_type") == "sphere"
+            else "hyperbolic_geodesic"
+        )
 
         for source_id, target_id, distance in pairs:
             if (source_id, target_id) in occupied:
