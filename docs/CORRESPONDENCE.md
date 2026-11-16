@@ -4,33 +4,65 @@ A sphere and a hyperbolic plane are not interchangeable because they can both be
 
 ## Finite experiment
 
-Take a sphere \(S^2_R\), \(R>0\), and a hyperbolic plane \(H^2_{-a^2}\), with curvature \(-a^2<0\). On a north-polar cap \(0\leq\theta\leq\theta_{\max}<\pi\), declare:
+Take a sphere $S^2_R$, $R>0$, and a hyperbolic plane $H^2_{-a^2}$, with curvature $-a^2<0$. On a north-polar cap $0\leq\theta\leq\theta_{\max}<\pi$, declare:
 
-\[
+$
 F(\theta,\phi) = (\rho=\lambda R\theta,\quad\psi=\phi+\omega\pmod {2\pi}).
-\]
+$
 
-\(\lambda>0\) is an explicitly declared target-length/source-length factor, **not an inferred natural isometry**. \(\omega\) fixes a chosen angular alignment. At the north pole, all polar angles represent the same point and map to the hyperbolic origin.
+$\lambda>0$ is an explicitly declared target-length/source-length factor, **not an inferred natural isometry**. $\omega$ fixes a chosen angular alignment. At the north pole, all polar angles represent the same point and map to the hyperbolic origin.
 
-For source samples \(p_i,p_j\), the **ideal signed remainder** in target length units is
+For source samples $p_i,p_j$, the **ideal signed remainder** in target length units is
 
-\[
+$
 \Delta_{ij}=d_H(F(p_i),F(p_j))-\lambda d_S(p_i,p_j).
-\]
+$
 
-For explicitly paired target samples \(q_i,q_j\), keep the **observed remainder** distinct:
+For explicitly paired target samples $q_i,q_j$, keep the **observed remainder** distinct:
 
-\[
+$
 \widehat{\Delta}_{ij}=d_H(q_i,q_j)-\lambda d_S(p_i,p_j).
-\]
+$
 
-With pointwise mismatches \(e_i=d_H(F(p_i),q_i)\), the triangle inequality supplies a **non-fitted bound**:
+With pointwise mismatches $e_i=d_H(F(p_i),q_i)$, the triangle inequality supplies a **non-fitted bound**:
 
-\[
+$
 |\widehat{\Delta}_{ij}-\Delta_{ij}|\leq e_i+e_j.
-\]
+$
 
-All raw distances and signed remainders remain visible. Radial pairs along one meridian have \(\Delta=0\) under this particular map; nondegenerate angular pairs usually have \(\Delta>0\). A smooth map is not an isometry between these different curvature geometries.
+## The local obstruction, not hidden behind a graph
+
+The sphere and hyperbolic plane have different polar metrics:
+
+$
+g_S = R^2(d\theta^2+\sin^2\theta\,d\phi^2),\qquad
+g_H = d\rho^2+\frac{\sinh^2(a\rho)}{a^2}\,d\psi^2.
+$
+
+Pulling back the hyperbolic metric through the **declared** radial map gives
+
+$
+F^*g_H=(\lambda R)^2d\theta^2+
+\frac{\sinh^2(a\lambda R\theta)}{a^2}\,d\phi^2.
+$
+
+Relative to the scaled source metric $\lambda^2g_S$, radial tangent lengths
+have factor **1**, whereas angular tangent lengths have the factor
+
+$
+L_{\mathrm{angular}}(\theta)=
+\frac{\sinh(a\lambda R\theta)}
+     {a\lambda R\sin\theta}>1
+\quad\text{for }0<\theta<\theta_{\max}<\pi.
+$
+
+This follows directly from $\sinh x>x$ and $\sin\theta<\theta$ for the
+stated positive arguments. The ratio tends to **1** at the north pole.
+The map is smooth on the cap but cannot erase the metric's angular
+distortion. This is a **local differential statement**, not a claim of a
+global bi-Lipschitz bound or an isometry.
+
+All raw distances and signed remainders remain visible. Radial pairs along one meridian have $\Delta=0$ under this particular map; nondegenerate angular pairs usually have $\Delta>0$. A smooth map is not an isometry between these different curvature geometries.
 
 ## Minimal use
 

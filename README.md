@@ -78,9 +78,12 @@ The point is not to flatten every geometry into a single story. It is to let dif
 **A declared bridge, with remainder.** The sphere-cap → hyperbolic-plane
 experiment allows an explicit radial map with units, provenance and paired
 nodes. It reports ideal and observed geodesic distortion separately and bounds
-their difference using target-mismatch errors. This is a chosen comparison,
-**not** canonical transport or a claim that different curvatures are
-isometric. See the [correspondence contract](docs/CORRESPONDENCE.md).
+their difference using target-mismatch errors. Its **radial stretch is 1** relative
+to the scaled source metric, while its angular stretch
+$\sinh(a\lambda R\theta)/(a\lambda R\sin\theta)$ is greater than 1 away from
+the north pole. This is a chosen comparison, **not** canonical transport or a
+claim that different curvatures are isometric. See the
+[correspondence contract](docs/CORRESPONDENCE.md).
 
 **Intrinsic distance is now separate from the display.** Sphere and hyperbolic
 layers preserve their original geometric parameters and support within-layer
