@@ -58,13 +58,93 @@ $$
 
 This follows directly from $\sinh x>x$ and $\sin\theta<\theta$ for the
 stated positive arguments. The ratio tends to **1** at the north pole.
-The map is smooth on the cap but cannot erase the metric's angular
-distortion. This first observation is **local**. A separate global
-bound requires a geodesically convex source domain.
+The map is smooth on every cap with $\theta_{\max}<\pi$, but cannot
+erase the metric's angular distortion. The local expansion alone does not
+give a global lower distance bound in an arbitrary target space: here the
+**convex hyperbolic image disk** supplies the missing global argument.
+Source-cap convexity is needed for our existing *upper-bound* proof, not
+for the *lower* bound.
 
 All raw distances and signed remainders remain visible. Radial pairs along one meridian have $\Delta=0$ under this particular map; nondegenerate angular pairs usually have $\Delta>0$. A smooth map is not an isometry between these different curvature geometries.
 
-## A global bound — but only on convex caps
+## A global lower bound even beyond a hemisphere
+
+For **every** declared cap with $0<\theta_{\max}<\pi$ (including nonconvex
+spherical caps), the chosen radial map satisfies:
+
+$
+d_H(F(p),F(q))\geq \lambda\,d_S(p,q)
+\qquad\text{for all }p,q\text{ in the cap}.
+$
+
+**Proof.** Let $D_H$ be the hyperbolic geodesic disk of radius
+$\lambda R\theta_{\max}$. The map $F$ is a smooth bijection with smooth
+inverse between the interior of the source cap and the interior of $D_H$
+(including the north pole, expressed using normal coordinates). The boundary
+statement follows by continuity; the south pole is excluded.
+
+The pointwise pullback inequality
+
+$
+F^*g_H\succeq\lambda^2g_S
+$
+
+gives $L_H(F\circ\gamma)\geq\lambda L_S(\gamma)$ for any piecewise
+smooth source path. Given $F(p),F(q)$, choose a minimizing hyperbolic
+geodesic $\eta$. **Hyperbolic disks are geodesically convex**, so $\eta$
+stays in $D_H$ and $F^{-1}\circ\eta$ remains in the spherical cap.
+Therefore
+
+$
+d_H(F(p),F(q))
+=L_H(\eta)
+\geq\lambda L_S(F^{-1}\circ\eta)
+\geq\lambda\,d_S(p,q).
+$
+
+Notice that the last $d_S$ is the **ambient spherical geodesic distance**,
+not the constrained intrinsic path metric inside the cap. No assumption
+that the shortest spherical path stays inside the source cap is needed.
+Equality occurs for points on the same meridian connected by a radial
+geodesic, so the factor 1 relative to $\lambda d_S$ is sharp.
+
+The public `radial_cap_global_lower_bound` returns this factor with its
+source/target unit declarations for the *exact chosen map*. For observed
+target samples $q_i$ with geodesic discrepancies
+$e_i=d_H(F(p_i),q_i)$, one obtains the explicitly weakened bound
+
+$
+d_H(q_i,q_j)\geq\lambda d_S(p_i,p_j)-(e_i+e_j).
+$
+
+This is an inequality, **not** a claim that observed target samples lie
+exactly on the map, nor a lower-bound estimate fitted to test data.
+
+### Why an upper bound cannot be cap-size independent
+
+Choose two cap-boundary points at equal polar angle
+$\theta=\pi-\varepsilon$, opposite in azimuth ($0$ and $\pi$), with
+$0<\varepsilon<\pi/2$. Their ambient spherical shortest arc goes over
+the south pole, but their hyperbolic images are on opposite rays:
+
+$
+d_S(p,q)=2R\varepsilon,\qquad
+d_H(F(p),F(q))=2\lambda R(\pi-\varepsilon),
+$
+
+and hence
+
+$
+\frac{d_H(F(p),F(q))}{\lambda d_S(p,q)}
+=\frac{\pi-\varepsilon}{\varepsilon}\longrightarrow\infty
+\quad (\varepsilon\downarrow 0).
+$
+
+Thus no **uniform finite upper constant independent of cap size** holds
+as the cap approaches the excluded south pole. This does **not** rule
+out a cap-dependent upper bound for each fixed $\theta_{\max}<\pi$.
+
+## A two-sided global bound on convex caps
 
 For the explicit map above, take $0<\theta_{\max}<\pi/2$, so the **spherical
 source cap is geodesically convex**. Its image is a hyperbolic geodesic disk,
@@ -103,11 +183,12 @@ $$
 The lower bound can be negative; that is a mathematically valid weak lower
 bound, not a negative measured distance. **No measurements are clipped.**
 
-The public function `convex_cap_distortion_bound` returns the analytic
-bounds only within this strictly convex-cap regime. For a larger cap
-$\theta_{\max}\geq\pi/2$, Braintop retains the original finite-pair
-remainder calculation but refuses to promote the local stretch formula
-to a global theorem using this argument.
+The public function `convex_cap_distortion_bound` returns this
+**two-sided envelope** only on strictly convex caps. For larger caps
+$\theta_{\max}\geq\pi/2$, the global lower bound remains valid through
+`radial_cap_global_lower_bound`, but this convexity-based **upper-bound**
+argument is not promoted beyond its proven domain. The finite-pair
+remainder calculation remains available in both regimes.
 
 ### Unit provenance is checked
 
