@@ -191,6 +191,106 @@ def radial_cap_global_lower_bound(
 
 
 @dataclass(frozen=True)
+class RadialCapGlobalEnvelope:
+    """Conservative two-sided distance envelope for every declared cap <pi.
+
+    For distinct source points in this cap:
+        1 <= d_H(F(p), F(q)) / (lambda*d_S(p,q)) <= upper_stretch.
+
+    The lower factor one is sharp. On caps above a hemisphere the *upper*
+    factor is conservative: maximal local angular stretch multiplied by
+    a justified detour factor. It is NOT claimed to be sharp.
+    """
+
+    source_layer_id: str
+    target_layer_id: str
+    cap_theta: float
+    lower_stretch: float
+    upper_stretch: float
+    angular_stretch_max: float
+    detour_factor: float
+    source_length_unit: str
+    target_length_unit: str
+
+
+def radial_cap_global_envelope(
+    source_layer: LayerModel,
+    target_layer: LayerModel,
+    spec: RadialCapMap,
+) -> RadialCapGlobalEnvelope:
+    """Provable cap-dependent upper and sharp lower factors for theta_max<pi.
+
+    Let Theta=spec.cap_theta, c=a*lambda*R, and A(Theta) be the largest
+    tangent stretch relative to lambda times the spherical metric:
+        A(Theta) = sinh(c*Theta)/(c*sin(Theta)).
+
+    For Theta<=pi/2 the spherical source cap is geodesically convex, and
+    d_H <= lambda*A(Theta)*d_S follows by mapping a minimizing geodesic.
+
+    For pi/2<Theta<pi, let alpha=pi-Theta be the radius of the excluded
+    (convex) south-polar disk. Replace any segment of a minimizing
+    spherical geodesic passing through this excluded disk by the shorter
+    boundary-latitude arc. If its endpoints have azimuth gap delta<=pi:
+        boundary length = R*sin(alpha)*delta
+        spherical distance = 2*R*asin(sin(alpha)*sin(delta/2)).
+    Concavity of u -> asin(sin(alpha)*sin(u)) on [0, pi/2] implies
+        boundary length <= B(alpha) * spherical distance,
+    with B(alpha) = pi*sin(alpha)/(2*alpha) <= pi/2.
+    Thus the detour lies in the original cap and has length at most
+    B(alpha)*d_S(p,q). Mapping it yields
+        d_H(F(p),F(q)) <= lambda*A(Theta)*B(alpha)*d_S(p,q).
+    The bound is explicit but generally not optimal.
+
+    The lower factor comes from radial_cap_global_lower_bound and
+    holds even for nonconvex caps by convexity of the target disk.
+    """
+    lower = radial_cap_global_lower_bound(source_layer, target_layer, spec)
+    _, radius = _metric(source_layer)
+    _, a = _metric(target_layer)
+    theta = spec.cap_theta
+    c = a * spec.radial_scale * radius
+    x = c * theta
+
+    if not isfinite(c) or not isfinite(x) or x > 700.0:
+        raise ValueError("Cap stretch exceeds finite numeric range")
+    if x < 1e-6:
+        x2 = x * x
+        sinh_over_x = 1.0 + x2 / 6.0 + x2 * x2 / 120.0
+    else:
+        sinh_over_x = sinh(x) / x
+
+    angular = sinh_over_x * (theta / sin(theta))
+    if theta <= pi / 2:
+        detour = 1.0
+    else:
+        alpha = pi - theta
+        # sin(alpha)/alpha is smooth at alpha=0; no cancellation for
+        # the small but positive alpha values allowed by the spec.
+        if alpha < 1e-5:
+            a2 = alpha * alpha
+            sin_over_alpha = 1.0 - a2 / 6.0 + (a2 * a2) / 120.0
+        else:
+            sin_over_alpha = sin(alpha) / alpha
+        detour = (pi / 2.0) * sin_over_alpha
+
+    upper = angular * detour
+    if (not isfinite(upper) or not isfinite(angular) or
+            detour < 1.0 - 1e-12 or upper < 1.0):
+        raise ValueError("Global cap envelope exceeds finite numeric range")
+    return RadialCapGlobalEnvelope(
+        source_layer_id=spec.source_layer_id,
+        target_layer_id=spec.target_layer_id,
+        cap_theta=theta,
+        lower_stretch=lower.lower_stretch,
+        upper_stretch=upper,
+        angular_stretch_max=angular,
+        detour_factor=detour,
+        source_length_unit=spec.source_length_unit,
+        target_length_unit=spec.target_length_unit,
+    )
+
+
+@dataclass(frozen=True)
 class ConvexCapDistortionBound:
     """Sharp tangent-range bound and valid global *pairwise* distance bounds.
 
