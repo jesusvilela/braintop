@@ -79,9 +79,25 @@ d_H(z_1,z_2)=\frac{2}{a}
 \right).
 $
 
-These formulas agree for valid finite parameters away from numerical
-overflow. The third display coordinate `z` used by Braintop's visualizer
-is *not* an isometric hyperbolic embedding.
+The production hyperbolic-distance implementation evaluates the geodesic-polar
+formula using log-sinh arithmetic. This avoids an intermediate overflow from
+products such as `sinh(500) * sinh(490)` when the actual distance is finite.
+It still rejects non-finite scales and radii whose scaled products cannot be
+represented.
+
+The Poincaré-disk formula is an alternative coordinate reference at moderate
+radii, but its floating-point disk coordinates saturate close to the boundary
+for large geodesic radii. For those cases, the tests instead use analytical
+radial and opposite-ray distances, plus a large-radius angular asymptotic.
+
+**Angular precision matters:** at large hyperbolic radius even a rounding-scale
+difference between the floating-point angles `0.3` and `0.3 + 2*pi` can
+have a very large geometric effect. The implementation does not silently snap
+nearby represented angles together. Exact periodic representatives such as
+`0` and the same floating-point `2*pi` constant are checked separately.
+
+The third display coordinate `z` used by Braintop's visualizer is *not* an
+isometric hyperbolic embedding.
 
 ## First experiment
 
