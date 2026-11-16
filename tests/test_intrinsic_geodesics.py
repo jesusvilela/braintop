@@ -120,6 +120,7 @@ def test_hyperbolic_display_nearest_disagrees_with_intrinsic_nearest():
         (a, b) for a, b, _ in neighbors if "m_node_0" in (a, b)
     ]
     assert ("m_node_0", "m_node_2") in chosen_for_source
+    assert ("m_node_0", "m_node_1") not in chosen_for_source
     builder.connect_intrinsic_neighbors("m", k=1)
     geo_edges = builder.topology.intra_layer_edges
     assert geo_edges
@@ -197,3 +198,50 @@ def test_no_metric_implicitly_assigned_to_conceptual_layer():
     )
     with pytest.raises(ValueError, match="Riemannian"):
         nearest_intrinsic_pairs(abstract)
+
+
+@pytest.mark.parametrize("kind,settings", [
+    ("sphere", {"radius": 2.3}),
+    ("hyperbolic", {"curvature": -1.3}),
+])
+def test_intrinsic_distance_symmetry_and_triangle_inequality(kind, settings):
+    rng = np.random.default_rng(27)
+    n = 8
+    if kind == "sphere":
+        params = np.column_stack([
+            np.arccos(2 * rng.random(n) - 1),
+            2 * math.pi * rng.random(n),
+        ])
+    else:
+        params = np.column_stack([
+            0.2 + 2.0 * rng.random(n),
+            2 * math.pi * rng.random(n),
+        ])
+    _, layer = layer_from(kind, params, **settings)
+
+    for i in range(n):
+        assert intrinsic_distance(layer, f"m_node_{i}", f"m_node_{i}") == pytest.approx(
+            0.0, abs=1e-13
+        )
+        for j in range(n):
+            dij = intrinsic_distance(layer, f"m_node_{i}", f"m_node_{j}")
+            dji = intrinsic_distance(layer, f"m_node_{j}", f"m_node_{i}")
+            assert dij >= 0 and math.isfinite(dij)
+            assert dij == pytest.approx(dji, rel=1e-12, abs=1e-12)
+            for k in range(n):
+                dik = intrinsic_distance(layer, f"m_node_{i}", f"m_node_{k}")
+                djk = intrinsic_distance(layer, f"m_node_{j}", f"m_node_{k}")
+                assert dik <= dij + djk + 1e-10
+
+
+def test_intrinsic_distance_unchanged_under_polar_angle_periodicity():
+    for kind, settings in [
+        ("sphere", {"radius": 2.0}),
+        ("hyperbolic", {"curvature": -0.5}),
+    ]:
+        params = [(1.0, 0.2), (1.7, 2.0)]
+        _, layer = layer_from(kind, params, **settings)
+        before = intrinsic_distance(layer, "m_node_0", "m_node_1")
+        layer.nodes[1].metadata["intrinsic_parameters"] = (1.7, 2.0 + 2 * math.pi)
+        after = intrinsic_distance(layer, "m_node_0", "m_node_1")
+        assert after == pytest.approx(before, rel=1e-12, abs=1e-12)
