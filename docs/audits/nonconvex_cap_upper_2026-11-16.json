@@ -1,0 +1,199 @@
+{
+  "task_id": "braintop-cap-upper-2026-11-16",
+  "claim": {
+    "text": "For the declared sphere-cap radial map F(theta,phi)=(lambda R theta,phi+omega), 0<Theta<pi, 1<= d_H(Fp,Fq)/(lambda d_S(p,q)) <= A(Theta)B(Theta) for distinct pairs, where A=sinh(a lambda R Theta)/(a lambda R sin Theta), and B=1 if Theta<=pi/2 else pi sin(pi-Theta)/(2(pi-Theta)).",
+    "scope": "One user-declared sphere-to-constant-curvature-hyperbolic radial map; spherical cap excludes south pole. Conservative cap-dependent upper factor, sharp lower factor.",
+    "status_before": "H",
+    "assumptions": [
+      "R>0, a>0, lambda>0 and 0<Theta<pi; finite positive declared length-unit conversion.",
+      "Source sphere and target hyperbolic plane carry their standard geodesic metrics.",
+      "A spherical geodesic ball of radius alpha=pi-Theta<pi/2 about the south pole is geodesically convex.",
+      "F is a smooth bijection from the cap to a hyperbolic disk."
+    ],
+    "forbidden_promotions": [
+      "No claim of optimal global upper Lipschitz constant on nonconvex caps.",
+      "No assertion of canonical manifold transport, an isometry, or a sheaf connection.",
+      "No cap-size-independent finite upper bound as Theta approaches pi.",
+      "No inference that finite CI tests are a formal mathematical proof."
+    ]
+  },
+  "specification": {
+    "intended_object": "Typed global two-sided distance envelope with distinct lower, local-angular, boundary-detour and conservative upper factors.",
+    "invariants": [
+      "lower_stretch=1 and upper_stretch=angular_stretch_max*detour_factor.",
+      "detour_factor=1 on Theta<=pi/2; detour_factor=pi sin(pi-Theta)/(2(pi-Theta)) for pi/2<Theta<pi.",
+      "All factors dimensionless; source/target length-unit names remain explicit.",
+      "Passive rigid display-frame changes cannot change intrinsic bounds."
+    ],
+    "known_answer_cases": [
+      "On convex caps new upper factor equals the earlier local-angular ceiling.",
+      "For opposite boundary points near south pole, ratio=(pi-epsilon)/epsilon.",
+      "For longitude gap pi on the excluded boundary circle, detour factor attains pi sin(alpha)/(2alpha)."
+    ]
+  },
+  "implementation": {
+    "artifact": "src/braintop/core/correspondence.py, function radial_cap_global_envelope",
+    "commit": "PR #31 branch fix/nonconvex-cap-upper-envelope; exact tested SHA in GitHub checks",
+    "environment": "Python 3.8/3.10/3.11/3.12 in GitHub Actions",
+    "live_entrypoint": "examples/nonconvex_cap_lower_sweep.py -> radial_cap_global_envelope -> spherical/hyperbolic intrinsic distances",
+    "representation": "Explicit polar manifold charts, declared length-unit labels, independent 3D display frames"
+  },
+  "metric": {
+    "name": "radial_cap_global_envelope",
+    "type": "typed_tuple",
+    "units": "dimensionless ratio factors with declared source and target length units",
+    "direction": "two_sided",
+    "raw_before_clipping": true,
+    "semantic_invariance_claimed": true,
+    "equivalence_attacks": [
+      "Independent passive SE(3) frame changes and reversed node enumeration",
+      "Spherical haversine versus production atan2 geodesic formula",
+      "Poincare disk expression versus hyperbolic polar formula"
+    ]
+  },
+  "tests": {
+    "black_box": [
+      "tests/test_global_upper_envelope.py checks public bound API across 8 cap radii"
+    ],
+    "structural": [
+      "B=1 on convex source cap; B in (1,pi/2) for nonconvex cap"
+    ],
+    "property_based": [
+      "Deterministic seeded 40-point polar fixtures per cap with all unordered pairs"
+    ],
+    "metamorphic": [
+      "Representation-invariant source and target frames; node reorder; different distance coordinate expressions"
+    ],
+    "fuzzing": [
+      "Near excluded south pole and near degenerate spherical separations"
+    ],
+    "historical": [
+      "Retain convex_cap_distortion_bound, previous global lower bound, and explicit units"
+    ]
+  },
+  "controls": {
+    "matched_baselines": [
+      "B=1 for convex caps, recovered exactly from earlier bound",
+      "Analytic opposite-ray ratio compared with sampled metric oracle"
+    ],
+    "negative_controls": [
+      "Opposite near-south ray pair excludes any cap-size-independent upper constant",
+      "Unit mismatch and finite numeric range cause explicit failures"
+    ],
+    "compute_parity": "Direct formulas and samples use the same finite pair positions and declared map; no runtime performance claim",
+    "parameter_parity": "A, B and ratios use the same R, lambda, curvature and cap radius",
+    "sampling_parity": "Seeded samples are compared using identical point pairs across alternative geodesic formulas",
+    "data_access_parity": "All reference data are deterministic and in-repository, without external observations"
+  },
+  "preregistration": {
+    "prediction": "Every finite sampled ratio lies between 1 and the analytic upper envelope on valid parameter regimes.",
+    "primary_metric": "Ratio d_H(Fp,Fq)/(lambda*d_S(p,q)) for nonidentical source pairs.",
+    "uncertainty_method": "Exact geometric proof by shortest-path detour; numerical evaluation tolerances declared in tests.",
+    "kill_condition": "Valid finite pair violates bound beyond numeric tolerance, or geometric boundary-detour proof fails under verified assumptions.",
+    "stop_condition": "Stop architectural expansion after bound API and tests; optimize constants only with separately preregistered mathematical target.",
+    "promotion_rule": "Promote to analytically supported conditional theorem only after proof premises are checked and CI passes; never infer independent peer replication."
+  },
+  "evidence": {
+    "primary_sources": [
+      "https://github.com/jesusvilela/braintop/blob/main/docs/CORRESPONDENCE.md",
+      "Bridson and Haefliger, Metric Spaces of Non-Positive Curvature (1999), spherical geodesic ball convexity, https://djvu.online/file/jB4LhbLRdRg0h"
+    ],
+    "execution_records": [
+      "PR #31 GitHub Actions CI, CodeQL and Release check runs at exact branch HEAD; record IDs via GitHub"
+    ],
+    "independent_witnesses": [
+      {
+        "name": "Spherical ball convexity (external reference premise only)",
+        "origin": "Independent textbook authors; not an independent verification of the new detour theorem",
+        "artifact": "Metric Spaces of Non-Positive Curvature, Bridson & Haefliger (1999), Chapter I.2"
+      }
+    ],
+    "claim_to_artifact_map": [
+      "Analytic boundary detour -> docs/CORRESPONDENCE.md",
+      "Finite implementation -> src/braintop/core/correspondence.py",
+      "Alternative geodesic-coordinate controls -> tests/test_global_upper_envelope.py",
+      "Visual demonstration and CSV -> examples/nonconvex_cap_lower_sweep.py"
+    ]
+  },
+  "round_trip": {
+    "edges": [
+      {
+        "from": "requirement",
+        "to": "formal specification",
+        "preserved": [
+          "Extend cap-dependent upper bound to all fixed caps Theta<pi"
+        ],
+        "transformed": [
+          "Split local angular ceiling from nonconvex detour factor"
+        ],
+        "lost": [],
+        "remainder": [
+          "Optimality of the upper constant not established"
+        ]
+      },
+      {
+        "from": "formal specification",
+        "to": "implementation",
+        "preserved": [
+          "Typed factors and explicitly declared metric parameters"
+        ],
+        "transformed": [
+          "Finite double-precision arithmetic"
+        ],
+        "lost": [
+          "Exact real arithmetic"
+        ],
+        "remainder": [
+          "Floating point range and rounding limits"
+        ]
+      },
+      {
+        "from": "implementation",
+        "to": "tests",
+        "preserved": [
+          "Bound values and pointwise geodesic comparisons"
+        ],
+        "transformed": [
+          "Deterministic finite fixtures"
+        ],
+        "lost": [
+          "Universal quantification over all source pairs"
+        ],
+        "remainder": [
+          "Same-author tests are correlated evidence"
+        ]
+      },
+      {
+        "from": "tests",
+        "to": "interpretation",
+        "preserved": [
+          "No sampled inequality violation on chosen fixtures"
+        ],
+        "transformed": [
+          "Numerical support for implementation"
+        ],
+        "lost": [
+          "External mathematical peer review"
+        ],
+        "remainder": [
+          "No automatic promotion to optimality or general transport"
+        ]
+      }
+    ]
+  },
+  "result": {
+    "observed": "Analytic detour argument plus finite test and showcase checks; final CI/review status recorded by PR #31.",
+    "effect_size": "Bounded ratio interval [1,A(Theta)B(Theta)] for every fixed valid cap, subject to exact-geometric assumptions.",
+    "uncertainty": "Theorem reasoning authored in one research cycle; finite tests do not constitute external proof verification.",
+    "status_after": "A",
+    "retired_claims": [
+      "The absence of source-cap convexity prevents every possible global upper bound.",
+      "Cap-dependent upper bounds are unavailable for Theta>=pi/2."
+    ],
+    "active_remainder": [
+      "Whether A(Theta) itself globally bounds pairwise ratios without the B penalty.",
+      "Optimal nonconvex cap-dependent upper constant.",
+      "Independent external mathematical replication."
+    ]
+  }
+}
