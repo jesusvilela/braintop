@@ -4,6 +4,9 @@ Notable changes to Braintop are recorded here.
 
 ## Unreleased
 
+- Add a cap-dependent, conservative global upper distance bound for nonconvex spherical caps using a spherical boundary-detour proof and independent geodesic controls.
+- Extend the nonconvex-cap showcase to plot this new upper bound alongside the sharp lower bound and near-south-pole counterexample.
+
 - Add a sharp global lower distance factor for the declared sphere-cap to hyperbolic radial map on every cap of angular radius below pi, including nonconvex caps.
 - Preserve the convex-cap restriction on the existing upper envelope; add near-south-pole controls showing the absence of a cap-size-independent upper bound.
 
