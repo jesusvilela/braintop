@@ -73,6 +73,9 @@ jobs:
       - name: Generate Braintop showcase views
         run: python examples/showcase.py --output-dir build/showcase --require-static
 
+      - name: Generate convex-cap distortion sweep
+        run: python examples/cap_distortion_sweep.py --output-dir build/showcase --require-static
+
       - name: Upload showcase views
         uses: actions/upload-artifact@v7
         with:
