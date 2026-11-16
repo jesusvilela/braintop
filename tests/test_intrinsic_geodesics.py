@@ -270,13 +270,26 @@ def test_large_hyperbolic_radii_do_not_overflow_finite_geodesics():
 def test_large_hyperbolic_angle_periodicity_and_symmetry():
     from braintop.core.intrinsic import _distance
 
-    a = np.array([450.0, 0.3])
-    b = np.array([449.0, 0.3 + 2 * math.pi])
+    # Exact floating multiples of the same represented period
+    # canonically reduce to the same angle.
+    a = np.array([450.0, 0.0])
+    b = np.array([449.0, 2 * math.pi])
     forward = _distance("hyperbolic", 1.0, a, b)
     backward = _distance("hyperbolic", 1.0, b, a)
     assert math.isfinite(forward)
     assert forward == pytest.approx(1.0, abs=1e-10)
     assert forward == pytest.approx(backward, abs=1e-12)
+
+    # In contrast, 0.3 and 0.3+2*pi need not reduce to *identical*
+    # floating values. At radius 450 a rounding-scale angular
+    # discrepancy is geometrically enormous. Do not snap it away:
+    # doing so would erase real small-angle hyperbolic distances.
+    shifted = _distance(
+        "hyperbolic", 1.0,
+        np.array([450.0, 0.3]),
+        np.array([449.0, 0.3 + 2 * math.pi])
+    )
+    assert shifted > 100.0
 
     # Tiny angular separation is still a non-zero geodesic even though
     # the unscaled sinh product is not representable in a float.
