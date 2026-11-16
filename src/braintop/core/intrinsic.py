@@ -9,6 +9,8 @@ transport is implemented here.
 
 from typing import Dict, List, Tuple, Union
 
+import math
+
 import numpy as np
 
 from braintop.core.topology import LayerModel, LayerType, NodeModel
@@ -70,6 +72,21 @@ def _parameters(node: NodeModel, layer: LayerModel, kind: str) -> np.ndarray:
     return values
 
 
+
+def _log_sinh_positive(x: float) -> float:
+    """Log(sinh(x)) for x>=0 without overflowing at large x."""
+    if x == 0.0:
+        return -math.inf
+    if x < 0.0 or not math.isfinite(x):
+        raise ValueError("log-sinh input must be finite and non-negative")
+    if x < 1e-4:
+        # sinh(x)/x = 1 + x^2/6 + x^4/120 + O(x^6).
+        sq = x * x
+        return math.log(x) + math.log1p(sq / 6.0 + sq * sq / 120.0)
+    if x < 30.0:
+        return math.log(math.sinh(x))
+    return x - math.log(2.0) + math.log1p(-math.exp(-2.0 * x))
+
 def _distance(kind: str, scale: float, a: np.ndarray, b: np.ndarray) -> float:
     """Numerically stable known-formula geodesic distance in layer units."""
     if kind == "sphere":
@@ -90,24 +107,62 @@ def _distance(kind: str, scale: float, a: np.ndarray, b: np.ndarray) -> float:
         return float(scale * angle)
 
     # Curvature K=-scale**2. Geodesic polar hyperbolic law of cosines:
-    # sinh^2(scale*d/2) =
-    #   sinh^2(scale*(rho1-rho2)/2)
-    #   + sinh(scale*rho1)*sinh(scale*rho2)*sin^2((theta1-theta2)/2)
-    r1, theta1 = a
-    r2, theta2 = b
-    with np.errstate(over="raise", invalid="raise"):
-        try:
-            radial = np.sinh(scale * (r1 - r2) / 2.0)
-            angular = (
-                np.sqrt(np.sinh(scale * r1) * np.sinh(scale * r2))
-                * np.sin((theta1 - theta2) / 2.0)
-            )
-            distance = 2.0 * np.arcsinh(np.hypot(radial, angular)) / scale
-        except FloatingPointError as exc:
-            raise ValueError("Hyperbolic parameters overflow the numeric domain") from exc
-    if not np.isfinite(distance):
-        raise ValueError("Hyperbolic distance is non-finite")
-    return float(distance)
+    # sinh^2(scale*d/2) = sinh^2(scale*(rho1-rho2)/2)
+    #   + sinh(scale*rho1)*sinh(scale*rho2)*sin^2((theta1-theta2)/2).
+    #
+    # Directly multiplying sinh(scale*rho1)*sinh(scale*rho2) can overflow
+    # even for small finite distances (notably when theta1 == theta2).
+    # Evaluate both positive summands in logarithmic form. This preserves
+    # moderate-distance behavior while extending the finite numeric range.
+    rho1, angle1 = float(a[0]), float(a[1])
+    rho2, angle2 = float(b[0]), float(b[1])
+    if rho1 < 0 or rho2 < 0 or not all(
+        math.isfinite(value) for value in (scale, rho1, rho2, angle1, angle2)
+    ) or scale <= 0:
+        raise ValueError("Hyperbolic scale, radii and angles must be finite and valid")
+
+    if rho1 == 0.0:
+        return rho2
+    if rho2 == 0.0:
+        return rho1
+
+    # Reduce each angle before subtraction, avoiding overflow of their
+    # difference for large but finite coordinate representations.
+    delta = math.remainder(
+        math.remainder(angle1, 2.0 * math.pi)
+        - math.remainder(angle2, 2.0 * math.pi),
+        2.0 * math.pi,
+    )
+    sine_half = abs(math.sin(delta / 2.0))
+    if sine_half == 0.0:
+        return abs(rho1 - rho2)
+
+    x = scale * rho1
+    y = scale * rho2
+    half_delta = 0.5 * scale * abs(rho1 - rho2)
+    if not all(math.isfinite(v) for v in (x, y, half_delta)):
+        raise ValueError("Hyperbolic parameters exceed the finite numeric domain")
+
+    log_radial = _log_sinh_positive(half_delta)
+    log_angular = (
+        0.5 * _log_sinh_positive(x)
+        + 0.5 * _log_sinh_positive(y)
+        + math.log(sine_half)
+    )
+    high = max(log_radial, log_angular)
+    low = min(log_radial, log_angular)
+    log_norm = high + 0.5 * math.log1p(math.exp(2.0 * (low - high)))
+
+    # asinh(exp(z)) = z + log(2) + O(exp(-2z)) for large z.
+    # This avoids constructing exp(z) when its value would overflow.
+    if log_norm > 36.0:
+        half_distance = log_norm + math.log(2.0)
+    else:
+        half_distance = math.asinh(math.exp(log_norm))
+    distance = (2.0 / scale) * half_distance
+    if not math.isfinite(distance):
+        raise ValueError("Hyperbolic distance exceeds the finite numeric domain")
+    return distance
 
 
 def intrinsic_distance(

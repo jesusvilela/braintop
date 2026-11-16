@@ -10,7 +10,7 @@ Only explicitly paired, registered source and target nodes are compared.
 """
 
 from dataclasses import dataclass
-from math import isfinite, pi
+from math import isfinite, pi, sin, sinh
 from typing import List, Sequence, Tuple
 
 import numpy as np
@@ -99,6 +99,112 @@ class CorrespondenceReport:
     max_abs_observed_remainder: float
 
 
+
+def _check_length_units(
+    source_layer: LayerModel, target_layer: LayerModel, spec: RadialCapMap
+) -> None:
+    """Bind unit declarations to actual layers; do not silently convert units.
+
+    This is a consistency check on declared labels, not dimensional analysis.
+    radial_scale remains an explicit user-supplied target/source conversion.
+    """
+    for role, layer, expected in (
+        ("source", source_layer, spec.source_length_unit),
+        ("target", target_layer, spec.target_length_unit),
+    ):
+        actual = layer.config.get("length_unit")
+        if not isinstance(actual, str) or not actual.strip():
+            raise ValueError(
+                f"{role} layer must declare config['length_unit'] to audit correspondence"
+            )
+        if actual != expected:
+            raise ValueError(
+                f"{role} layer length_unit {actual!r} does not match "
+                f"correspondence {expected!r}"
+            )
+
+
+@dataclass(frozen=True)
+class ConvexCapDistortionBound:
+    """Sharp tangent-range bound and valid global *pairwise* distance bounds.
+
+    This applies ONLY to a spherical cap with angular radius strictly less
+    than pi/2 (geodesically convex) mapped to a hyperbolic geodesic disk.
+    For distinct source points:
+        1 <= d_H(F(p),F(q)) / (lambda*d_S(p,q)) <= angular_stretch_max
+    """
+
+    source_layer_id: str
+    target_layer_id: str
+    cap_theta: float
+    radial_stretch: float
+    angular_stretch_max: float
+    source_length_unit: str
+    target_length_unit: str
+
+
+def convex_cap_distortion_bound(
+    source_layer: LayerModel,
+    target_layer: LayerModel,
+    spec: RadialCapMap,
+) -> ConvexCapDistortionBound:
+    """Return a geometrically justified finite upper bound, not a fitted score.
+
+    Sphere metric: g_S = R^2(dtheta^2 + sin^2(theta) dphi^2).
+    Hyperbolic metric: g_H = drho^2 + (sinh(a*rho)/a)^2 dpsi^2.
+    F(theta,phi)=(lambda*R*theta,phi+omega).
+
+    Relative to lambda^2*g_S, radial tangent stretch is 1 and angular
+    stretch A(theta)=sinh(a*lambda*R*theta)/(a*lambda*R*sin(theta)).
+    A(theta) increases on (0,pi). The source cap is geodesically convex
+    only in the declared regime theta_max < pi/2; its image is a convex
+    hyperbolic disk. Curve-length comparison then gives the global bound.
+    For larger caps, no such global bound is returned.
+    """
+    if (
+        source_layer.id != spec.source_layer_id
+        or target_layer.id != spec.target_layer_id
+    ):
+        raise ValueError("Correspondence layer IDs do not match the provided layers")
+    if (
+        source_layer.layer_type != LayerType.RIEMANNIAN
+        or target_layer.layer_type != LayerType.RIEMANNIAN
+        or source_layer.config.get("manifold_type") != "sphere"
+        or target_layer.config.get("manifold_type") != "hyperbolic"
+    ):
+        raise ValueError("Convex cap bound requires a sphere source and hyperbolic target")
+
+    _check_length_units(source_layer, target_layer, spec)
+    _, radius = _metric(source_layer)
+    _, a = _metric(target_layer)
+    theta = spec.cap_theta
+    if theta >= pi / 2:
+        raise ValueError(
+            "Global bound requires a strictly convex spherical cap: "
+            "cap_theta must be less than pi/2"
+        )
+    c = a * spec.radial_scale * radius
+    x = c * theta
+    if not isfinite(c) or not isfinite(x) or x > 700.0:
+        raise ValueError("Cap stretch exceeds finite numeric range")
+    if x < 1e-6:
+        x2 = x * x
+        sinh_over_x = 1.0 + x2 / 6.0 + x2 * x2 / 120.0
+    else:
+        sinh_over_x = sinh(x) / x
+    upper = sinh_over_x * (theta / sin(theta))
+    if not isfinite(upper) or upper < 1.0:
+        raise ValueError("Cap distortion bound is outside finite valid range")
+    return ConvexCapDistortionBound(
+        source_layer_id=source_layer.id,
+        target_layer_id=target_layer.id,
+        cap_theta=theta,
+        radial_stretch=1.0,
+        angular_stretch_max=upper,
+        source_length_unit=spec.source_length_unit,
+        target_length_unit=spec.target_length_unit,
+    )
+
 def compare_radial_cap(
     source_layer: LayerModel,
     target_layer: LayerModel,
@@ -127,6 +233,7 @@ def compare_radial_cap(
         or target_layer.config.get("manifold_type") != "hyperbolic"
     ):
         raise ValueError("Only explicit sphere-cap to hyperbolic correspondence is implemented")
+    _check_length_units(source_layer, target_layer, spec)
     src_kind, src_radius = _metric(source_layer)
     tgt_kind, tgt_scale = _metric(target_layer)
     if not isfinite(max_target_error) or max_target_error < 0:
@@ -155,7 +262,7 @@ def compare_radial_cap(
         e = _distance("hyperbolic", tgt_scale, predicted, b)
         if not isfinite(e):
             raise ValueError("Target mismatch is not finite")
-        if e > max_target_error + 1e-12:
+        if e > max_target_error:
             raise ValueError(
                 f"Declared target {target_id} is too far from mapped source {source_id}: "
                 f"mismatch {e} > {max_target_error} {spec.target_length_unit}"

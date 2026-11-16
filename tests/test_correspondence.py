@@ -35,11 +35,12 @@ def fixture_layers(shift=0.0):
     builder = TopologyBuilder("declared", "Geometric comparison")
     builder.add_riemannian_layer(
         "S", len(sphere_params), "sphere",
-        radius=radius, parameters=np.asarray(sphere_params),
+        radius=radius, length_unit="source-length",
+        parameters=np.asarray(sphere_params),
     )
     builder.add_riemannian_layer(
         "H", len(hyperbolic_params), "hyperbolic",
-        curvature=curvature,
+        curvature=curvature, length_unit="target-length",
         parameters=np.asarray(hyperbolic_params),
     )
     spec = RadialCapMap(

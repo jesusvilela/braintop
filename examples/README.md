@@ -57,3 +57,19 @@ python examples/showcase.py --output-dir build/showcase --require-static
 ```
 
 The semantic vectors are synthetic demo data, not embeddings from a trained language model.
+
+
+### cap_distortion_sweep.py
+A deterministic test of Braintop's declared sphere-cap to hyperbolic
+correspondence at increasing spherical cap radii (all strictly below pi/2).
+Produces CSV, interactive HTML and optionally static PNG, recording the
+analytic upper bound, actual sampled maximum/minimum and unaltered
+signed-remainder summary.
+
+```bash
+pip install -e ".[static]"
+python examples/cap_distortion_sweep.py --output-dir build/showcase --require-static
+```
+
+This is a numerical check on a user-chosen map, **not** automatic
+cross-manifold transport or an empirical discovery of the analytic bound.

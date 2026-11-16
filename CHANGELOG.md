@@ -4,6 +4,12 @@ Notable changes to Braintop are recorded here.
 
 ## Unreleased
 
+- Bind declared correspondence units to the source/target layer configurations; reject mismatches and enforce strict target-error budgets.
+- Add an analytic convex-cap distance-distortion envelope for spherical caps with radius strictly below π/2.
+- Generate a deterministic distortion-versus-cap-radius plot and CSV in showcase CI.
+- Repair GitHub display-math delimiters and clarify global versus local validity.
+
+
 - Introduce a declared sphere-cap to hyperbolic radial map with explicit units and provenance.
 - Report ideal versus observed geodesic remainders and triangle-inequality mismatch bounds; materialize only audited explicit cross-layer pairs.
 

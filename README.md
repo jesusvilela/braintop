@@ -85,6 +85,16 @@ the north pole. This is a chosen comparison, **not** canonical transport or a
 claim that different curvatures are isometric. See the
 [correspondence contract](docs/CORRESPONDENCE.md).
 
+**Cap-radius distortion audit.** On strictly convex spherical caps
+($0<\theta_{\max}<\pi/2$), the chosen radial map has a provable
+pairwise distance-ratio envelope: radial stretch is 1, and the maximum
+angular stretch is
+$\sinh(a\lambda R\theta_{\max})/(a\lambda R\sin\theta_{\max})$.
+The new [deterministic sweep](examples/cap_distortion_sweep.py) compares
+that analytic envelope with actual geodesic samples and preserves the raw
+CSV. Larger caps still support pairwise comparisons but are **not given a
+global bound** by this convexity argument.
+
 **Intrinsic distance is now separate from the display.** Sphere and hyperbolic
 layers preserve their original geometric parameters and support within-layer
 geodesic distances through `intrinsic_distance` and
