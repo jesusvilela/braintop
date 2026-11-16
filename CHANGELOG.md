@@ -4,6 +4,10 @@ Notable changes to Braintop are recorded here.
 
 ## Unreleased
 
+- Add a sharp global lower distance factor for the declared sphere-cap to hyperbolic radial map on every cap of angular radius below pi, including nonconvex caps.
+- Preserve the convex-cap restriction on the existing upper envelope; add near-south-pole controls showing the absence of a cap-size-independent upper bound.
+
+
 - Bind declared correspondence units to the source/target layer configurations; reject mismatches and enforce strict target-error budgets.
 - Add an analytic convex-cap distance-distortion envelope for spherical caps with radius strictly below π/2.
 - Generate a deterministic distortion-versus-cap-radius plot and CSV in showcase CI.
