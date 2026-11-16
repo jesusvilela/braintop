@@ -6,55 +6,55 @@ A sphere and a hyperbolic plane are not interchangeable because they can both be
 
 Take a sphere $S^2_R$, $R>0$, and a hyperbolic plane $H^2_{-a^2}$, with curvature $-a^2<0$. On a north-polar cap $0\leq\theta\leq\theta_{\max}<\pi$, declare:
 
-$
+$$
 F(\theta,\phi) = (\rho=\lambda R\theta,\quad\psi=\phi+\omega\pmod {2\pi}).
-$
+$$
 
 $\lambda>0$ is an explicitly declared target-length/source-length factor, **not an inferred natural isometry**. $\omega$ fixes a chosen angular alignment. At the north pole, all polar angles represent the same point and map to the hyperbolic origin.
 
 For source samples $p_i,p_j$, the **ideal signed remainder** in target length units is
 
-$
+$$
 \Delta_{ij}=d_H(F(p_i),F(p_j))-\lambda d_S(p_i,p_j).
-$
+$$
 
 For explicitly paired target samples $q_i,q_j$, keep the **observed remainder** distinct:
 
-$
+$$
 \widehat{\Delta}_{ij}=d_H(q_i,q_j)-\lambda d_S(p_i,p_j).
-$
+$$
 
 With pointwise mismatches $e_i=d_H(F(p_i),q_i)$, the triangle inequality supplies a **non-fitted bound**:
 
-$
+$$
 |\widehat{\Delta}_{ij}-\Delta_{ij}|\leq e_i+e_j.
-$
+$$
 
 ## The local obstruction, not hidden behind a graph
 
 The sphere and hyperbolic plane have different polar metrics:
 
-$
+$$
 g_S = R^2(d\theta^2+\sin^2\theta\,d\phi^2),\qquad
 g_H = d\rho^2+\frac{\sinh^2(a\rho)}{a^2}\,d\psi^2.
-$
+$$
 
 Pulling back the hyperbolic metric through the **declared** radial map gives
 
-$
+$$
 F^*g_H=(\lambda R)^2d\theta^2+
 \frac{\sinh^2(a\lambda R\theta)}{a^2}\,d\phi^2.
-$
+$$
 
 Relative to the scaled source metric $\lambda^2g_S$, radial tangent lengths
 have factor **1**, whereas angular tangent lengths have the factor
 
-$
+$$
 L_{\mathrm{angular}}(\theta)=
 \frac{\sinh(a\lambda R\theta)}
      {a\lambda R\sin\theta}>1
 \quad\text{for }0<\theta<\theta_{\max}<\pi.
-$
+$$
 
 This follows directly from $\sinh x>x$ and $\sin\theta<\theta$ for the
 stated positive arguments. The ratio tends to **1** at the north pole.
@@ -79,14 +79,14 @@ minimizing spherical geodesic (which remains inside the cap), and the
 lower inequality to the inverse of a minimizing hyperbolic geodesic
 (which remains in the target disk), proves for **distinct** cap points:
 
-$
+$$
 1\ \leq\
 \frac{d_H(F(p),F(q))}{\lambda\,d_S(p,q)}
 \ \leq\
 A(\theta_{\max})
 =
 \frac{\sinh(c\theta_{\max})}{c\sin\theta_{\max}}.
-$
+$$
 
 The bounds are sharp as tangent-direction limits: radial direction gives 1,
 while infinitesimal angular separation at the cap boundary approaches
@@ -94,16 +94,16 @@ $A(\theta_{\max})$. The formula is an *analytic envelope*, not an empirical
 maximum found by sampling. For actual declared target samples, the mismatch
 allowances $e_i,e_j$ give the unnormalized target-distance inequalities:
 
-$
+$$
 \lambda d_S(p_i,p_j)-(e_i+e_j)
 \ \leq\ d_H(q_i,q_j)\
 \leq\ \lambda A(\theta_{\max})d_S(p_i,p_j)+(e_i+e_j).
-$
+$$
 
 The lower bound can be negative; that is a mathematically valid weak lower
 bound, not a negative measured distance. **No measurements are clipped.**
 
-The public function \`convex_cap_distortion_bound\` returns the analytic
+The public function `convex_cap_distortion_bound` returns the analytic
 bounds only within this strictly convex-cap regime. For a larger cap
 $\theta_{\max}\geq\pi/2$, Braintop retains the original finite-pair
 remainder calculation but refuses to promote the local stretch formula
@@ -111,8 +111,8 @@ to a global theorem using this argument.
 
 ### Unit provenance is checked
 
-The \`RadialCapMap\` unit names must agree with each layer's
-\`config["length_unit"]\`. Names are compared literally; this does not
+The `RadialCapMap` unit names must agree with each layer's
+`config["length_unit"]`. Names are compared literally; this does not
 provide automated dimensional conversions. The numeric scale $\lambda$
 is still the user's explicit target-length/source-length choice.
 A missing or mismatched length-unit declaration fails before
