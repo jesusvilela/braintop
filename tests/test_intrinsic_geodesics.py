@@ -139,7 +139,7 @@ def test_neighbours_invariant_under_passive_frame_change_and_permutation():
     builder.reexpress_layer("m", rotation, (9.0, -2.0, 4.0))
     layer.nodes.reverse()  # ordering also changes, geometric metadata does not.
     after = nearest_intrinsic_pairs(layer, k=2)
-    assert before == pytest.approx(after) if False else before == after
+    assert before == after
 
     before_edges = len(builder.topology.intra_layer_edges)
     builder.connect_intrinsic_neighbors("m", k=2)
