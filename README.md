@@ -92,8 +92,14 @@ angular stretch is
 $\sinh(a\lambda R\theta_{\max})/(a\lambda R\sin\theta_{\max})$.
 The new [deterministic sweep](examples/cap_distortion_sweep.py) compares
 that analytic envelope with actual geodesic samples and preserves the raw
-CSV. Larger caps still support pairwise comparisons but are **not given a
-global bound** by this convexity argument.
+CSV. For **all** declared caps smaller than the whole sphere
+($0<\theta_{\max}<\pi$), including those larger than a hemisphere,
+`radial_cap_global_lower_bound` provides the sharp lower stretch 1:
+$d_H(F(p),F(q))\geq\lambda d_S(p,q)$. The upper envelope above remains
+restricted to convex caps. Opposite boundary points near the south pole
+show why no cap-size-independent upper factor can survive as
+$\theta_{\max}\to\pi$. See the
+[nonconvex-cap control](examples/nonconvex_cap_lower_sweep.py).
 
 **Intrinsic distance is now separate from the display.** Sphere and hyperbolic
 layers preserve their original geometric parameters and support within-layer
