@@ -73,3 +73,19 @@ python examples/cap_distortion_sweep.py --output-dir build/showcase --require-st
 
 This is a numerical check on a user-chosen map, **not** automatic
 cross-manifold transport or an empirical discovery of the analytic bound.
+
+
+### nonconvex_cap_lower_sweep.py
+Demonstrates Braintop's sharp global lower distance factor on a declared
+sphere-to-hyperbolic radial map, including caps larger than a hemisphere.
+Opposite points near the excluded south pole exhibit increasing distance
+ratios, showing that no upper constant can be independent of cap size.
+Exports HTML, CSV and PNG from the actual intrinsic metric API.
+
+```bash
+pip install -e ".[static]"
+python examples/nonconvex_cap_lower_sweep.py --output-dir build/showcase --require-static
+```
+
+The opposite-ray analytic control is intentionally **built into the fixture**.
+It verifies the example, not a new general transport mechanism.

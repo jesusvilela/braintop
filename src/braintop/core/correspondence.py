@@ -125,6 +125,72 @@ def _check_length_units(
 
 
 @dataclass(frozen=True)
+class RadialCapGlobalLowerBound:
+    """Co-Lipschitz distance bound for the declared radial map on any cap <pi.
+
+    For ALL source points p,q in the cap, irrespective of whether the
+    spherical minimizing geodesic lies inside it:
+
+        d_H(F(p), F(q)) >= radial_scale * d_S(p,q).
+
+    The target disk's geodesic convexity, not source-cap convexity,
+    establishes the inequality. The output is not an upper bound.
+    """
+
+    source_layer_id: str
+    target_layer_id: str
+    cap_theta: float
+    lower_stretch: float
+    source_length_unit: str
+    target_length_unit: str
+
+
+def radial_cap_global_lower_bound(
+    source_layer: LayerModel,
+    target_layer: LayerModel,
+    spec: RadialCapMap,
+) -> RadialCapGlobalLowerBound:
+    """Certify the conditional geometric lower factor, without sampling.
+
+    On the spherical cap theta<=cap_theta<pi, F is invertible onto a
+    hyperbolic geodesic disk. F* g_H >= lambda^2 g_S pointwise. The
+    hyperbolic minimizing geodesic stays in that disk, so its inverse
+    path has sphere length <= d_H/lambda. The ambient spherical distance
+    is <= this inverse-path length. Source-cap convexity is unnecessary.
+
+    The factor one is sharp: points on the same radial meridian reach
+    equality. The theorem refers to exact geometry, not to finite-precision
+    point comparisons or to arbitrary user-supplied target samples.
+    """
+    if (source_layer.id != spec.source_layer_id
+            or target_layer.id != spec.target_layer_id):
+        raise ValueError("Correspondence layer IDs do not match the provided layers")
+    if (
+        source_layer.layer_type != LayerType.RIEMANNIAN
+        or target_layer.layer_type != LayerType.RIEMANNIAN
+        or source_layer.config.get("manifold_type") != "sphere"
+        or target_layer.config.get("manifold_type") != "hyperbolic"
+    ):
+        raise ValueError("Global lower bound requires sphere and hyperbolic layers")
+    _check_length_units(source_layer, target_layer, spec)
+    _, radius = _metric(source_layer)
+    _, scale = _metric(target_layer)
+    target_radius = spec.radial_scale * radius * spec.cap_theta
+    if not isfinite(target_radius) or target_radius <= 0:
+        raise ValueError("Mapped cap radius must be positive and finite")
+    if not isfinite(scale * target_radius):
+        raise ValueError("Mapped hyperbolic cap radius exceeds numeric range")
+    return RadialCapGlobalLowerBound(
+        source_layer_id=source_layer.id,
+        target_layer_id=target_layer.id,
+        cap_theta=spec.cap_theta,
+        lower_stretch=1.0,
+        source_length_unit=spec.source_length_unit,
+        target_length_unit=spec.target_length_unit,
+    )
+
+
+@dataclass(frozen=True)
 class ConvexCapDistortionBound:
     """Sharp tangent-range bound and valid global *pairwise* distance bounds.
 
